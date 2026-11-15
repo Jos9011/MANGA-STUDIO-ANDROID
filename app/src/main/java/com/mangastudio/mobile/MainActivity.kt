@@ -1,0 +1,170 @@
+package com.mangastudio.mobile
+
+import android.annotation.SuppressLint
+import android.content.Intent
+import android.net.Uri
+import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.view.View
+import android.webkit.*
+import android.widget.LinearLayout
+import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatActivity
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+import java.net.HttpURLConnection
+import java.net.URL
+
+/**
+ * MainActivity - Janela principal do app mobile com WebView, upload de arquivos e carregamento rápido.
+ * Regra de Ouro: Coeso, desacoplado e estritamente < 300 linhas.
+ */
+class MainActivity : AppCompatActivity() {
+
+    private lateinit var webView: WebView
+    private lateinit var loadingLayout: LinearLayout
+    private lateinit var swipeRefresh: SwipeRefreshLayout
+
+    private val SERVER_URL = "http://127.0.0.1:5000"
+    private var fileChooserCallback: ValueCallback<Array<Uri>>? = null
+    private val mainHandler = Handler(Looper.getMainLooper())
+
+    private val filePickerLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == RESULT_OK) {
+            val clipData = result.data?.clipData
+            val dataUri = result.data?.data
+            val uris = when {
+                clipData != null -> Array(clipData.itemCount) { clipData.getItemAt(it).uri }
+                dataUri != null -> arrayOf(dataUri)
+                else -> null
+            }
+            fileChooserCallback?.onReceiveValue(uris)
+        } else {
+            fileChooserCallback?.onReceiveValue(null)
+        }
+        fileChooserCallback = null
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+
+        webView = findViewById(R.id.webView)
+        loadingLayout = findViewById(R.id.loadingLayout)
+        swipeRefresh = findViewById(R.id.swipeRefresh)
+
+        setupWebView()
+        setupSwipeRefresh()
+
+        PermissionHelper.requestNotificationPermission(this)
+        if (!PermissionHelper.hasStoragePermission(this)) {
+            PermissionHelper.requestStoragePermission(this)
+        }
+
+        MangaServerService.start(applicationContext)
+        waitForServerReady()
+    }
+
+    @SuppressLint("SetJavaScriptEnabled")
+    private fun setupWebView() {
+        webView.settings.apply {
+            javaScriptEnabled = true
+            domStorageEnabled = true
+            allowFileAccess = true
+            allowContentAccess = true
+            loadWithOverviewMode = true
+            useWideViewPort = true
+            builtInZoomControls = true
+            displayZoomControls = false
+            mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+        }
+
+        webView.webViewClient = object : WebViewClient() {
+            override fun onPageFinished(view: WebView?, url: String?) {
+                super.onPageFinished(view, url)
+                swipeRefresh.isRefreshing = false
+                loadingLayout.visibility = View.GONE
+                swipeRefresh.visibility = View.VISIBLE
+            }
+
+            override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
+                super.onReceivedError(view, request, error)
+                if (request?.isForMainFrame == true) {
+                    mainHandler.postDelayed({ webView.loadUrl(SERVER_URL) }, 1500)
+                }
+            }
+        }
+
+        webView.webChromeClient = object : WebChromeClient() {
+            override fun onShowFileChooser(
+                wv: WebView?,
+                filePathCallback: ValueCallback<Array<Uri>>?,
+                fileChooserParams: FileChooserParams?
+            ): Boolean {
+                fileChooserCallback?.onReceiveValue(null)
+                fileChooserCallback = filePathCallback
+                val intent = fileChooserParams?.createIntent() ?: Intent(Intent.ACTION_GET_CONTENT).apply {
+                    type = "*/*"
+                    putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
+                }
+                try {
+                    filePickerLauncher.launch(intent)
+                } catch (e: Exception) {
+                    fileChooserCallback = null
+                    return false
+                }
+                return true
+            }
+        }
+    }
+
+    private fun setupSwipeRefresh() {
+        swipeRefresh.setColorSchemeResources(R.color.primary)
+        swipeRefresh.setOnRefreshListener {
+            webView.reload()
+        }
+    }
+
+    private fun waitForServerReady() {
+        Thread {
+            var ready = false
+            var attempts = 0
+            while (!ready && attempts < 30) {
+                attempts++
+                try {
+                    val conn = URL("$SERVER_URL/api/health").openConnection() as HttpURLConnection
+                    conn.connectTimeout = 800
+                    conn.readTimeout = 800
+                    if (conn.responseCode == 200) {
+                        ready = true
+                    }
+                    conn.disconnect()
+                } catch (_: Exception) {}
+
+                if (!ready) {
+                    Thread.sleep(600)
+                }
+            }
+
+            mainHandler.post {
+                if (ready) {
+                    webView.loadUrl(SERVER_URL)
+                } else {
+                    Toast.makeText(this, "Aguardando inicialização do motor...", Toast.LENGTH_SHORT).show()
+                    webView.loadUrl(SERVER_URL)
+                }
+            }
+        }.start()
+    }
+
+    override fun onBackPressed() {
+        if (webView.canGoBack()) {
+            webView.goBack()
+        } else {
+            super.onBackPressed()
+        }
+    }
+}

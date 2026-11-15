@@ -1,0 +1,81 @@
+name: 📱 Compilar Manga Studio APK
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: 🔨 Construir APK para Android
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Clonar Repositório
+        uses: actions/checkout@v4
+
+      - name: ☕ Configurar Java JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: 🐍 Configurar Python 3.11 (Chaquopy)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 🤖 Configurar Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: 🔑 Permissão de Execução para Gradle
+        run: chmod +x gradlew || true
+
+      - name: ⚙️ Gerar Wrapper Gradle se necessário
+        run: |
+          if [ ! -f "gradlew" ]; then
+            gradle wrapper
+            chmod +x gradlew
+          fi
+
+      - name: 🚀 Compilar APK (assembleDebug)
+        run: ./gradlew assembleDebug --stacktrace
+
+      - name: 📦 Renomear APK Final
+        run: |
+          mkdir -p build/outputs/apk/
+          cp app/build/outputs/apk/debug/app-debug.apk build/outputs/apk/MangaStudio-Mobile-v1.0.0.apk || true
+
+      - name: 📤 Publicar APK como Artefato para Download
+        uses: actions/upload-artifact@v4
+        with:
+          name: MangaStudio-Mobile-APK
+          path: app/build/outputs/apk/debug/*.apk
+          retention-days: 30
+
+      - name: 🏷️ Criar Release no GitHub com Download Direto do APK
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v1.0.0-mobile
+          name: "Manga Studio Mobile v1.0.0 APK"
+          body: |
+            ## 📱 Manga Studio Mobile v1.0.0 (APK Android)
+            
+            Versão nativa independente do Manga Studio para celulares Android!
+            
+            ### ✨ Recursos:
+            - 🚀 **100% no Celular**: Sem depender de Google Colab ou PC ligado.
+            - ⚡ **Zero Sobrecarga de RAM**: Usa APIs (Gemini Vision / Groq) para tradução instantânea.
+            - 🖋️ **Limpeza & Diagramação Local**: Roda OpenCV e Pillow direto no processador do celular.
+            - 📦 **Gera .CBZ e Leitor Offline**: Pronto para ler no Mihon, Tachiyomi ou no navegador.
+            
+            ### 📥 Como instalar:
+            1. Baixe o arquivo `MangaStudio-Mobile-v1.0.0.apk` abaixo no seu celular.
+            2. Toque no arquivo baixado e permita a instalação de fontes desconhecidas se solicitado.
+            3. Abra o app, insira sua chave Gemini Vision nas configurações (⚙️) e comece a traduzir!
+          files: app/build/outputs/apk/debug/*.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
