@@ -11,6 +11,7 @@ from PIL import Image
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "app", "src", "main", "python")))
 
 import mobile_config
+import mobile_drive_helper
 import mobile_typesetter
 from mobile_server import app
 
@@ -39,17 +40,50 @@ class MobileEngineTests(unittest.TestCase):
         self.assertIsInstance(rendered, Image.Image)
         self.assertEqual(rendered.size, (120, 120))
 
-    def test_server_health_and_endpoints(self):
+    def test_server_health_and_index(self):
         client = app.test_client()
         res = client.get("/api/health")
         self.assertEqual(res.status_code, 200)
         data = res.get_json()
         self.assertEqual(data.get("status"), "ok")
 
-        cfg_res = client.get("/api/config")
-        self.assertEqual(cfg_res.status_code, 200)
-        cfg_data = cfg_res.get_json()
-        self.assertFalse(cfg_data.get("use_local_llm"))
+        idx_res = client.get("/")
+        self.assertEqual(idx_res.status_code, 200)
+        self.assertIn(b"Manga", idx_res.data)
+
+    def test_drive_folders_and_library(self):
+        client = app.test_client()
+        d_res = client.get("/api/drive_folders")
+        self.assertEqual(d_res.status_code, 200)
+        d_data = d_res.get_json()
+        self.assertTrue(d_data.get("available"))
+
+        l_res = client.get("/api/library")
+        self.assertEqual(l_res.status_code, 200)
+        l_data = l_res.get_json()
+        self.assertIn("translated", l_data)
+        self.assertIn("raw", l_data)
+
+    def test_status_endpoint_ollama_disabled(self):
+        client = app.test_client()
+        st_res = client.get("/api/status")
+        self.assertEqual(st_res.status_code, 200)
+        st_data = st_res.get_json()
+        self.assertEqual(st_data["ollama"]["status"], "disabled_mobile")
+        self.assertIn("gemini", st_data)
+        self.assertIn("groq", st_data)
+
+    def test_thumbnail_generation(self):
+        tmp_img = os.path.join(mobile_config.get_base_dir(), "test_thumb.jpg")
+        try:
+            im = Image.new("RGB", (200, 300), color="blue")
+            im.save(tmp_img)
+            thumb = mobile_drive_helper.generate_thumbnail(tmp_img)
+            self.assertIsNotNone(thumb)
+            self.assertTrue(os.path.exists(thumb))
+        finally:
+            if os.path.exists(tmp_img):
+                os.remove(tmp_img)
 
 
 if __name__ == "__main__":

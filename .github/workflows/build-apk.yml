@@ -42,12 +42,12 @@ jobs:
       - name: 📦 Preparar APK Final
         run: |
           mkdir -p build/outputs/apk/
-          cp app/build/outputs/apk/debug/app-debug.apk build/outputs/apk/MangaStudio-Mobile-v1.0.0.apk || true
+          cp app/build/outputs/apk/debug/app-debug.apk build/outputs/apk/MangaStudio-Mobile-v1.0.1.apk || true
 
       - name: 📤 Publicar APK como Artefato para Download
         uses: actions/upload-artifact@v4
         with:
-          name: MangaStudio-Mobile-APK
+          name: MangaStudio-Mobile-v1.0.1-APK
           path: app/build/outputs/apk/debug/*.apk
           retention-days: 30
 
@@ -55,23 +55,23 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: v1.0.0-mobile
-          name: "Manga Studio Mobile v1.0.0 APK"
+          tag_name: v1.0.1-mobile
+          name: "Manga Studio Mobile v1.0.1 APK (Interface Original & Google Drive)"
           body: |
-            ## 📱 Manga Studio Mobile v1.0.0 (APK Android)
+            ## 📱 Manga Studio Mobile v1.0.1 (APK Android)
             
-            Versão nativa independente do Manga Studio para celulares Android!
+            Atualização com a interface completa do Manga Studio original e suporte nativo ao Google Drive!
             
-            ### ✨ Recursos:
-            - 🚀 **100% no Celular**: Sem depender de Google Colab ou PC ligado.
-            - ⚡ **Zero Sobrecarga de RAM**: Usa APIs (Gemini Vision / Groq) para tradução instantânea.
-            - 🖋️ **Limpeza & Diagramação Local**: Roda OpenCV e Pillow direto no processador do celular.
-            - 📦 **Gera .CBZ e Leitor Offline**: Pronto para ler no Mihon, Tachiyomi ou no navegador.
+            ### ✨ O que há de novo nesta versão:
+            - 🎨 **Interface Original Manga Studio**: O mesmo dashboard Cyberpunk do PC/Colab com biblioteca de mangás, capas de visualização rápida e reprodutor interativo.
+            - ☁️ **Acesso Direto ao Google Drive & Memória**: Escaneamento automático de `/sdcard/Download`, `/storage/emulated/0/MANGAS`, Google Drive sincronizado e seletor nativo de arquivos Android.
+            - 🚀 **IA Otimizada para Celular**: IA Local pesada (Ollama) desativada para poupar memória e bateria do aparelho; processamento acelerado por APIs de Nuvem (Gemini Vision / Groq).
+            - 📖 **Leitor Web Imersivo Integrado**: Abra e leia seus mangás traduzidos diretamente no app ou exporte pacotes `.CBZ` para o Tachiyomi/Mihon.
             
             ### 📥 Como instalar:
-            1. Baixe o arquivo `MangaStudio-Mobile-v1.0.0.apk` abaixo no seu celular.
-            2. Toque no arquivo baixado e permita a instalação de fontes desconhecidas se solicitado.
-            3. Abra o app, insira sua chave Gemini Vision nas configurações (⚙️) e comece a traduzir!
+            1. Baixe o arquivo `app-debug.apk` abaixo no seu smartphone Android.
+            2. Toque no arquivo baixado e permita a instalação.
+            3. Ao abrir, insira sua chave do Google Gemini no menu de Configurações (⚙️) para traduzir com IA.
           files: app/build/outputs/apk/debug/*.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
