@@ -241,6 +241,8 @@
       overflow-y: auto;
       overflow-x: hidden;
       -webkit-overflow-scrolling: touch;
+      touch-action: pan-y;
+      overscroll-behavior-y: contain;
       position: relative;
       display: flex;
       flex-direction: column;
@@ -4103,6 +4105,15 @@
           }
         } else {
           // Servidor possui chaves válidas; atualiza o backup deste navegador
+          if (imported.provider) {
+            currentConfig.provider = (imported.provider === 'ollama') ? 'groq' : imported.provider;
+          }
+          if (imported.raw_mangas_dir && !/^[a-zA-Z]:/.test(imported.raw_mangas_dir)) {
+            currentConfig.raw_mangas_dir = imported.raw_mangas_dir;
+          }
+          if (imported.translated_mangas_dir && !/^[a-zA-Z]:/.test(imported.translated_mangas_dir)) {
+            currentConfig.translated_mangas_dir = imported.translated_mangas_dir;
+          }
           saveBrowserProfile(currentConfig, false);
         }
 
@@ -4583,6 +4594,15 @@
           if (typeof imported.ollama_vision_model === 'string') currentConfig.ollama_vision_model = imported.ollama_vision_model;
           if (imported.vision_provider) currentConfig.vision_provider = imported.vision_provider;
 
+          if (imported.provider) {
+            currentConfig.provider = (imported.provider === 'ollama') ? 'groq' : imported.provider;
+          }
+          if (imported.raw_mangas_dir && !/^[a-zA-Z]:/.test(imported.raw_mangas_dir)) {
+            currentConfig.raw_mangas_dir = imported.raw_mangas_dir;
+          }
+          if (imported.translated_mangas_dir && !/^[a-zA-Z]:/.test(imported.translated_mangas_dir)) {
+            currentConfig.translated_mangas_dir = imported.translated_mangas_dir;
+          }
           saveBrowserProfile(currentConfig, false);
           await fetch('/api/config', {
             method: 'POST',

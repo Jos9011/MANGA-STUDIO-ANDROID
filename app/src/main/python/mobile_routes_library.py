@@ -15,6 +15,7 @@ import mobile_drive_helper
 import mobile_typesetter
 
 library_bp = Blueprint("library_bp", __name__)
+STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "studio", "static")
 
 
 @library_bp.route("/api/drive_folders")
@@ -110,14 +111,16 @@ def api_library():
 
 @library_bp.route("/api/thumb")
 def api_thumb():
-    """Retorna miniatura da capa do mangá gerada sob demanda via Pillow."""
-    img_path = request.args.get("path", "")
-    if not img_path:
-        return "", 404
+    """Retorna miniatura da capa gerada sob demanda com fallback seguro."""
+    img_path = request.args.get("path", "").strip("\"'")
+    if img_path:
+        thumb_p = mobile_drive_helper.generate_thumbnail(img_path)
+        if thumb_p and os.path.exists(thumb_p):
+            return send_file(thumb_p, mimetype="image/jpeg")
 
-    thumb_p = mobile_drive_helper.generate_thumbnail(img_path)
-    if thumb_p and os.path.exists(thumb_p):
-        return send_file(thumb_p, mimetype="image/jpeg")
+    logo_p = os.path.join(STATIC_DIR, "logo.png")
+    if os.path.exists(logo_p):
+        return send_file(logo_p, mimetype="image/png")
     return "", 404
 
 

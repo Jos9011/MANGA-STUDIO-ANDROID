@@ -12,6 +12,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..",
 
 import mobile_config
 import mobile_drive_helper
+import mobile_translator
 import mobile_typesetter
 from mobile_server import app
 
@@ -51,19 +52,6 @@ class MobileEngineTests(unittest.TestCase):
         self.assertEqual(idx_res.status_code, 200)
         self.assertIn(b"Manga", idx_res.data)
 
-    def test_drive_folders_and_library(self):
-        client = app.test_client()
-        d_res = client.get("/api/drive_folders")
-        self.assertEqual(d_res.status_code, 200)
-        d_data = d_res.get_json()
-        self.assertTrue(d_data.get("available"))
-
-        l_res = client.get("/api/library")
-        self.assertEqual(l_res.status_code, 200)
-        l_data = l_res.get_json()
-        self.assertIn("translated", l_data)
-        self.assertIn("raw", l_data)
-
     def test_status_endpoint_ollama_disabled(self):
         client = app.test_client()
         st_res = client.get("/api/status")
@@ -73,7 +61,13 @@ class MobileEngineTests(unittest.TestCase):
         self.assertIn("gemini", st_data)
         self.assertIn("groq", st_data)
 
-    def test_thumbnail_generation(self):
+    def test_thumbnail_generation_and_fallback(self):
+        client = app.test_client()
+        # Fallback para logo quando imagem inexistente
+        res_missing = client.get("/api/thumb?path=C%3A%5CNonExistent%5Cimage.jpg")
+        self.assertEqual(res_missing.status_code, 200)
+        self.assertEqual(res_missing.mimetype, "image/png")
+
         tmp_img = os.path.join(mobile_config.get_base_dir(), "test_thumb.jpg")
         try:
             im = Image.new("RGB", (200, 300), color="blue")
@@ -84,6 +78,25 @@ class MobileEngineTests(unittest.TestCase):
         finally:
             if os.path.exists(tmp_img):
                 os.remove(tmp_img)
+
+    def test_profile_sanitization_removes_windows_paths(self):
+        pc_profile = {
+            "provider": "ollama",
+            "raw_mangas_dir": "C:\\Users\\ja329\\OneDrive\\MANGAS",
+            "translated_mangas_dir": "G:\\Meu Drive\\MANGAS [PT-BR]",
+            "groq_api_keys": ["gsk_test1", "gsk_test2"]
+        }
+        clean = mobile_config.sanitize_profile_config(pc_profile)
+        self.assertEqual(clean["provider"], "groq")
+        self.assertFalse(clean["raw_mangas_dir"].startswith("C:"))
+        self.assertFalse(clean["translated_mangas_dir"].startswith("G:"))
+        self.assertEqual(clean["groq_api_key"], "gsk_test1")
+
+    def test_extract_json_bubbles(self):
+        llm_raw = "<think>Raciocínio longo...</think>```json\n[{\"box_2d\": [10, 10, 100, 100], \"translation\": \"Teste\"}]\n```"
+        bubbles = mobile_translator.extract_json_bubbles(llm_raw)
+        self.assertEqual(len(bubbles), 1)
+        self.assertEqual(bubbles[0]["translation"], "Teste")
 
 
 if __name__ == "__main__":

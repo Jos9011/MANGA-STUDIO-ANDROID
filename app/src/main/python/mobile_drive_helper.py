@@ -115,6 +115,19 @@ def extract_all_drive_archives():
     return count
 
 
+def _safe_convert_and_save(im, dest):
+    """Converte imagem tratando transparência e salva miniatura JPG com qualidade."""
+    if im.mode in ("RGBA", "LA", "P"):
+        im_rgba = im.convert("RGBA")
+        bg = Image.new("RGB", im_rgba.size, (24, 24, 24))
+        bg.paste(im_rgba, mask=im_rgba.split()[-1])
+        im_final = bg
+    else:
+        im_final = im.convert("RGB")
+    im_final.thumbnail((320, 460), Image.Resampling.LANCZOS)
+    im_final.save(dest, "JPEG", quality=85)
+
+
 def generate_thumbnail(img_path):
     """Gera miniatura compacta (320x460) com Pillow a partir de arquivo ou zip."""
     if not img_path:
@@ -127,14 +140,23 @@ def generate_thumbnail(img_path):
     if os.path.exists(thumb_dest) and os.path.getsize(thumb_dest) > 0:
         return thumb_dest
 
+    # Trata caminho do Windows tentando encontrar na memória do Android
+    if re.match(r"^[a-zA-Z]:", img_path) or "\\" in img_path:
+        fname = os.path.basename(img_path.replace("\\", "/"))
+        for candidate_root in find_drive_roots():
+            cand_p = os.path.join(candidate_root, fname)
+            if os.path.exists(cand_p):
+                img_path = cand_p
+                break
+
     try:
         if "::" in img_path:
             arc_p, inner_f = img_path.split("::", 1)
-            with zipfile.ZipFile(arc_p, "r") as z, z.open(inner_f) as zf, Image.open(io.BytesIO(zf.read())) as im:
-                im = im.convert("RGB")
-                im.thumbnail((320, 460), Image.Resampling.LANCZOS)
-                im.save(thumb_dest, "JPEG", quality=85)
-            return thumb_dest
+            inner_f = inner_f.replace("\\", "/")
+            if os.path.exists(arc_p):
+                with zipfile.ZipFile(arc_p, "r") as z, z.open(inner_f) as zf, Image.open(io.BytesIO(zf.read())) as im:
+                    _safe_convert_and_save(im, thumb_dest)
+                return thumb_dest
 
         if os.path.isfile(img_path) and img_path.lower().endswith((".zip", ".cbz")):
             with zipfile.ZipFile(img_path, "r") as z:
@@ -143,9 +165,7 @@ def generate_thumbnail(img_path):
                     return None
                 zip_imgs.sort(key=natural_sort_key)
                 with z.open(zip_imgs[0]) as zf, Image.open(io.BytesIO(zf.read())) as im:
-                    im = im.convert("RGB")
-                    im.thumbnail((320, 460), Image.Resampling.LANCZOS)
-                    im.save(thumb_dest, "JPEG", quality=85)
+                    _safe_convert_and_save(im, thumb_dest)
             return thumb_dest
 
         first_file = img_path
@@ -158,9 +178,7 @@ def generate_thumbnail(img_path):
 
         if os.path.isfile(first_file):
             with Image.open(first_file) as im:
-                im = im.convert("RGB")
-                im.thumbnail((320, 460), Image.Resampling.LANCZOS)
-                im.save(thumb_dest, "JPEG", quality=85)
+                _safe_convert_and_save(im, thumb_dest)
             return thumb_dest
     except Exception as e:
         print(f"[!] Erro ao gerar thumbnail para {img_path}: {e}")

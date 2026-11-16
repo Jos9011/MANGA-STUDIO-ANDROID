@@ -12,7 +12,6 @@ import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import java.net.HttpURLConnection
 import java.net.URL
 
@@ -24,7 +23,6 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
     private lateinit var loadingLayout: LinearLayout
-    private lateinit var swipeRefresh: SwipeRefreshLayout
 
     private val SERVER_URL = "http://127.0.0.1:5000"
     private var fileChooserCallback: ValueCallback<Array<Uri>>? = null
@@ -54,10 +52,8 @@ class MainActivity : AppCompatActivity() {
 
         webView = findViewById(R.id.webView)
         loadingLayout = findViewById(R.id.loadingLayout)
-        swipeRefresh = findViewById(R.id.swipeRefresh)
 
         setupWebView()
-        setupSwipeRefresh()
 
         PermissionHelper.requestNotificationPermission(this)
         if (!PermissionHelper.hasStoragePermission(this)) {
@@ -70,6 +66,10 @@ class MainActivity : AppCompatActivity() {
 
     @SuppressLint("SetJavaScriptEnabled")
     private fun setupWebView() {
+        webView.isVerticalScrollBarEnabled = true
+        webView.isHorizontalScrollBarEnabled = false
+        webView.overScrollMode = View.OVER_SCROLL_IF_CONTENT_SCROLLS
+
         webView.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
@@ -85,9 +85,8 @@ class MainActivity : AppCompatActivity() {
         webView.webViewClient = object : WebViewClient() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
-                swipeRefresh.isRefreshing = false
                 loadingLayout.visibility = View.GONE
-                swipeRefresh.visibility = View.VISIBLE
+                webView.visibility = View.VISIBLE
             }
 
             override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
@@ -121,12 +120,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun setupSwipeRefresh() {
-        swipeRefresh.setColorSchemeResources(R.color.primary)
-        swipeRefresh.setOnRefreshListener {
-            webView.reload()
-        }
-    }
 
     private fun waitForServerReady() {
         Thread {

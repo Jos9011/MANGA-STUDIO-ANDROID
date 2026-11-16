@@ -42,12 +42,12 @@ jobs:
       - name: 📦 Preparar APK Final
         run: |
           mkdir -p build/outputs/apk/
-          cp app/build/outputs/apk/debug/app-debug.apk build/outputs/apk/MangaStudio-Mobile-v1.0.3.apk || true
+          cp app/build/outputs/apk/debug/app-debug.apk build/outputs/apk/MangaStudio-Mobile-v1.0.4.apk || true
 
       - name: 📤 Publicar APK como Artefato para Download
         uses: actions/upload-artifact@v4
         with:
-          name: MangaStudio-Mobile-v1.0.3-APK
+          name: MangaStudio-Mobile-v1.0.4-APK
           path: app/build/outputs/apk/debug/*.apk
           retention-days: 30
 
@@ -55,23 +55,23 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: v1.0.3-mobile
-          name: "Manga Studio Mobile v1.0.3 APK (Versão Oficial v0.6.9 Beta Ativa)"
+          tag_name: v1.0.4-mobile
+          name: "Manga Studio Mobile v1.0.4 APK (Groq Vision, Scroll Fluido & Correção de Capas)"
           body: |
-            ## 📱 Manga Studio Mobile v1.0.3 (APK Android)
+            ## 📱 Manga Studio Mobile v1.0.4 (APK Android)
             
-            Versão com exibição e injeção oficial da versão **v0.6.9 Beta** do sistema clássico no mobile!
+            Versão com correções completas para Gestos de Rolagem, Importação de Perfil de PC e Suporte a Groq Vision!
             
-            ### ✨ Atualizações:
-            - 🏷️ **Versão Oficial v0.6.9 Beta Ativada**: Adicionado o `@app.context_processor` e corrigidos os fallbacks do Jinja para que a tag lateral, o cabeçalho e o modal de sobre exibam oficialmente **v0.6.9 Beta**.
-            - 🎨 **Interface Original Cyberpunk**: Dashboard completo do Manga Studio idêntico ao desktop/Colab.
-            - ☁️ **Acesso ao Google Drive & Memória**: Escaneamento de `/storage/emulated/0/Download`, `/sdcard/MANGAS` e seletor nativo do Android.
-            - 🚀 **Sem IA Local Pesada**: Zero consumo excessivo de RAM/bateria; tradução ultrarrápida via Gemini Vision / Groq.
-            - 📖 **Leitor Web Imersivo**: Leitor responsivo integrado diretamente no aplicativo.
+            ### ✨ Principais Correções e Melhorias:
+            - 📜 **Scroll Fluido e Responsivo**: Removido o interceptor de gestos nativo do Android (`SwipeRefreshLayout`), permitindo rolagem livre (subir e descer) em qualquer ponto da biblioteca e do leitor.
+            - ⚡ **Suporte Nativo a Groq Vision & OpenRouter**: O motor de tradução agora suporta Groq Vision (`qwen/qwen3.8-27b`, `llama-3.2-11b-vision-preview`), OpenRouter e Gemini Vision com rotação automática de chaves da sua lista.
+            - 🔄 **Importação de Perfil do PC Sanitizada**: Ao importar `config.json` do seu computador, o app ignora caminhos com letras de unidade Windows (`C:\...`) para preservar o armazenamento do celular e sincroniza perfeitamente as chaves `groq_api_keys`.
+            - 🖼️ **Correção nas Capas dos Mangás**: As miniaturas agora contam com fallback instantâneo para o logo do Manga Studio quando o caminho original não puder ser lido, eliminando ícones quebrados na biblioteca.
+            - 🛡️ **Garantia de Páginas no Leitor**: Caso alguma página sofra oscilação de rede ou cota durante a tradução, a página original é mantida como fallback, garantindo que o capítulo completo seja gerado junto com o `leitor.html` e o `.cbz`.
             
             ### 📥 Como instalar:
-            1. Baixe o arquivo `app-debug.apk` abaixo no seu aparelho.
-            2. Instale a atualização e abra o aplicativo normalmente.
+            1. Baixe o arquivo `app-debug.apk` abaixo no seu celular.
+            2. Instale a atualização e aproveite a leitura e tradução sem bugs!
           files: app/build/outputs/apk/debug/*.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
