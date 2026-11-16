@@ -7,6 +7,9 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     name: 🔨 Construir APK para Android
@@ -27,23 +30,14 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: 🤖 Configurar Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: 🔑 Permissão de Execução para Gradle
-        run: chmod +x gradlew || true
-
-      - name: ⚙️ Gerar Wrapper Gradle se necessário
-        run: |
-          if [ ! -f "gradlew" ]; then
-            gradle wrapper
-            chmod +x gradlew
-          fi
+      - name: 🐘 Configurar Gradle
+        uses: gradle/actions/setup-gradle@v3
 
       - name: 🚀 Compilar APK (assembleDebug)
-        run: ./gradlew assembleDebug --stacktrace
+        run: |
+          gradle assembleDebug --stacktrace
 
-      - name: 📦 Renomear APK Final
+      - name: 📦 Preparar APK Final
         run: |
           mkdir -p build/outputs/apk/
           cp app/build/outputs/apk/debug/app-debug.apk build/outputs/apk/MangaStudio-Mobile-v1.0.0.apk || true
