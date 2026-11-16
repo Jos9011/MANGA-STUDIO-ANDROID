@@ -103,7 +103,8 @@ def api_start():
                 set_job_progress(status=status, stage="translate", current=cur, total=tot, msg=msg, log=msg, result=result)
 
             out_folder = mobile_translator.translate_manga_folder(target_dir, progress_cb=cb)
-            cbz_p = f"{out_folder.rstrip('/\\\\')}.cbz"
+            clean_out = out_folder.rstrip("/\\")
+            cbz_p = clean_out + ".cbz"
             set_job_progress(status="done", stage="done", current=1, total=1, msg="Concluído com sucesso!", log="Processo finalizado!", result={"output": out_folder, "cbz": cbz_p})
         except Exception as e:
             set_job_progress(status="error", stage="error", msg=f"Erro: {str(e)}", log=f"[ERRO] {str(e)}", error=str(e))

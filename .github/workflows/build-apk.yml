@@ -42,12 +42,12 @@ jobs:
       - name: 📦 Preparar APK Final
         run: |
           mkdir -p build/outputs/apk/
-          cp app/build/outputs/apk/debug/app-debug.apk build/outputs/apk/MangaStudio-Mobile-v1.0.1.apk || true
+          cp app/build/outputs/apk/debug/app-debug.apk build/outputs/apk/MangaStudio-Mobile-v1.0.2.apk || true
 
       - name: 📤 Publicar APK como Artefato para Download
         uses: actions/upload-artifact@v4
         with:
-          name: MangaStudio-Mobile-v1.0.1-APK
+          name: MangaStudio-Mobile-v1.0.2-APK
           path: app/build/outputs/apk/debug/*.apk
           retention-days: 30
 
@@ -55,23 +55,25 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: v1.0.1-mobile
-          name: "Manga Studio Mobile v1.0.1 APK (Interface Original & Google Drive)"
+          tag_name: v1.0.2-mobile
+          name: "Manga Studio Mobile v1.0.2 APK (Correção Python 3.11 & Interface Original)"
           body: |
-            ## 📱 Manga Studio Mobile v1.0.1 (APK Android)
+            ## 📱 Manga Studio Mobile v1.0.2 (APK Android)
             
-            Atualização com a interface completa do Manga Studio original e suporte nativo ao Google Drive!
+            Versão com correção de compatibilidade para o interpretador Python 3.11 no Android.
             
-            ### ✨ O que há de novo nesta versão:
-            - 🎨 **Interface Original Manga Studio**: O mesmo dashboard Cyberpunk do PC/Colab com biblioteca de mangás, capas de visualização rápida e reprodutor interativo.
-            - ☁️ **Acesso Direto ao Google Drive & Memória**: Escaneamento automático de `/sdcard/Download`, `/storage/emulated/0/MANGAS`, Google Drive sincronizado e seletor nativo de arquivos Android.
-            - 🚀 **IA Otimizada para Celular**: IA Local pesada (Ollama) desativada para poupar memória e bateria do aparelho; processamento acelerado por APIs de Nuvem (Gemini Vision / Groq).
-            - 📖 **Leitor Web Imersivo Integrado**: Abra e leia seus mangás traduzidos diretamente no app ou exporte pacotes `.CBZ` para o Tachiyomi/Mihon.
+            ### 🐛 Correção Aplicada:
+            - **Resolução de SyntaxError no Python 3.11**: Corrigida a expressão f-string com escape de barra invertida em `mobile_routes_translation.py`, permitindo a inicialização instantânea do servidor sem erros.
+            
+            ### ✨ Recursos:
+            - 🎨 **Interface Original Cyberpunk**: Dashboard completo do Manga Studio idêntico ao desktop/Colab.
+            - ☁️ **Acesso ao Google Drive & Memória**: Escaneamento de `/storage/emulated/0/Download`, `/sdcard/MANGAS` e seletor nativo do Android.
+            - 🚀 **Sem IA Local Pesada**: Zero consumo excessivo de RAM/bateria; tradução ultrarrápida via Gemini Vision / Groq.
+            - 📖 **Leitor Web Imersivo**: Leitor responsivo integrado diretamente no aplicativo.
             
             ### 📥 Como instalar:
-            1. Baixe o arquivo `app-debug.apk` abaixo no seu smartphone Android.
-            2. Toque no arquivo baixado e permita a instalação.
-            3. Ao abrir, insira sua chave do Google Gemini no menu de Configurações (⚙️) para traduzir com IA.
+            1. Baixe o arquivo `app-debug.apk` abaixo no seu aparelho.
+            2. Instale a atualização e abra o aplicativo normalmente.
           files: app/build/outputs/apk/debug/*.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
