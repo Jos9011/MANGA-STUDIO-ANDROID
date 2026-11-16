@@ -42,12 +42,12 @@ jobs:
       - name: 📦 Preparar APK Final
         run: |
           mkdir -p build/outputs/apk/
-          cp app/build/outputs/apk/debug/app-debug.apk build/outputs/apk/MangaStudio-Mobile-v1.0.2.apk || true
+          cp app/build/outputs/apk/debug/app-debug.apk build/outputs/apk/MangaStudio-Mobile-v1.0.3.apk || true
 
       - name: 📤 Publicar APK como Artefato para Download
         uses: actions/upload-artifact@v4
         with:
-          name: MangaStudio-Mobile-v1.0.2-APK
+          name: MangaStudio-Mobile-v1.0.3-APK
           path: app/build/outputs/apk/debug/*.apk
           retention-days: 30
 
@@ -55,17 +55,15 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: v1.0.2-mobile
-          name: "Manga Studio Mobile v1.0.2 APK (Correção Python 3.11 & Interface Original)"
+          tag_name: v1.0.3-mobile
+          name: "Manga Studio Mobile v1.0.3 APK (Versão Oficial v0.6.9 Beta Ativa)"
           body: |
-            ## 📱 Manga Studio Mobile v1.0.2 (APK Android)
+            ## 📱 Manga Studio Mobile v1.0.3 (APK Android)
             
-            Versão com correção de compatibilidade para o interpretador Python 3.11 no Android.
+            Versão com exibição e injeção oficial da versão **v0.6.9 Beta** do sistema clássico no mobile!
             
-            ### 🐛 Correção Aplicada:
-            - **Resolução de SyntaxError no Python 3.11**: Corrigida a expressão f-string com escape de barra invertida em `mobile_routes_translation.py`, permitindo a inicialização instantânea do servidor sem erros.
-            
-            ### ✨ Recursos:
+            ### ✨ Atualizações:
+            - 🏷️ **Versão Oficial v0.6.9 Beta Ativada**: Adicionado o `@app.context_processor` e corrigidos os fallbacks do Jinja para que a tag lateral, o cabeçalho e o modal de sobre exibam oficialmente **v0.6.9 Beta**.
             - 🎨 **Interface Original Cyberpunk**: Dashboard completo do Manga Studio idêntico ao desktop/Colab.
             - ☁️ **Acesso ao Google Drive & Memória**: Escaneamento de `/storage/emulated/0/Download`, `/sdcard/MANGAS` e seletor nativo do Android.
             - 🚀 **Sem IA Local Pesada**: Zero consumo excessivo de RAM/bateria; tradução ultrarrápida via Gemini Vision / Groq.

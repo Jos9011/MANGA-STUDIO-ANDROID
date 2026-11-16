@@ -21,6 +21,19 @@ app = Flask(
     static_url_path="/static"
 )
 
+APP_VERSION = "0.6.9-beta"
+APP_VERSION_NAME = "v0.6.9 Beta"
+
+
+@app.context_processor
+def inject_version():
+    """Injeta as variáveis oficiais da versão v0.6.9 Beta em todos os templates Jinja."""
+    return {
+        "app_version": APP_VERSION_NAME,
+        "app_version_code": APP_VERSION,
+    }
+
+
 # Registra os módulos de rotas
 app.register_blueprint(library_bp)
 app.register_blueprint(trans_bp)
@@ -52,16 +65,18 @@ def health():
     return jsonify({
         "status": "ok",
         "app": "Manga Studio Mobile",
-        "version": "1.0.1"
+        "version": APP_VERSION,
+        "version_name": APP_VERSION_NAME,
     })
 
 
 @app.route("/api/version")
 def api_version():
     return jsonify({
-        "version": "1.0.1-mobile",
-        "name": "Manga Studio Mobile",
-        "platform": "Android"
+        "version": APP_VERSION,
+        "version_name": APP_VERSION_NAME,
+        "release": f"Manga Studio {APP_VERSION_NAME}",
+        "platform": "Android",
     })
 
 
