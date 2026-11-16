@@ -6,11 +6,8 @@ Regra de Ouro: Coeso, desacoplado e estritamente < 300 linhas.
 import os
 import sys
 import unittest
-import numpy as np
-import cv2
 from PIL import Image
 
-# Adiciona o diretório python ao path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "app", "src", "main", "python")))
 
 import mobile_config
@@ -28,12 +25,11 @@ class MobileEngineTests(unittest.TestCase):
         self.assertIn("max_image_dim", cfg)
 
     def test_clean_balloon_area(self):
-        dummy = np.full((100, 100, 3), 240, dtype=np.uint8)
-        dummy[40:60, 40:60] = 20  # texto preto
-        cleaned = mobile_typesetter.clean_balloon_area(dummy, 30, 30, 70, 70)
-        self.assertEqual(cleaned.shape, (100, 100, 3))
-        # O centro escuro deve ter sido clareado pelo inpainting
-        self.assertGreater(int(cleaned[50, 50, 0]), 100)
+        img_pil = Image.new("RGB", (100, 100), (50, 50, 50))
+        cleaned = mobile_typesetter.clean_balloon_area(img_pil, 20, 20, 80, 80)
+        self.assertEqual(cleaned.size, (100, 100))
+        center_color = cleaned.getpixel((50, 50))
+        self.assertEqual(center_color, (255, 255, 255))
 
     def test_render_dialogue_balloon(self):
         pil_img = Image.new("RGB", (120, 120), (255, 255, 255))

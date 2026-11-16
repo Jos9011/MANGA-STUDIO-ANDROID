@@ -1,36 +1,25 @@
 """
 mobile_typesetter.py - Limpeza de Balões e Diagramação de Texto no Celular
-Processa imagens usando OpenCV e Pillow diretamente na CPU do smartphone.
+Processa imagens de forma leve e rápida usando Pillow puro diretamente no smartphone.
 Regra de Ouro: Coeso, modular e estritamente < 300 linhas.
 """
 
 import os
 import zipfile
-import cv2
-import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 
-def clean_balloon_area(img_cv, xmin, ymin, xmax, ymax):
-    """Limpa o texto original dentro da área do balão usando inpainting inteligente."""
-    h_img, w_img = img_cv.shape[:2]
-    xmin, ymin = max(0, int(xmin)), max(0, int(ymin))
-    xmax, ymax = min(w_img, int(xmax)), min(h_img, int(ymax))
-    if xmax <= xmin or ymax <= ymin:
-        return img_cv
+def clean_balloon_area(img_pil, xmin, ymin, xmax, ymax):
+    """Limpa o interior do balão com preenchimento branco elíptico preservando o contorno."""
+    draw = ImageDraw.Draw(img_pil)
+    w = max(10, int(xmax - xmin))
+    h = max(10, int(ymax - ymin))
+    pad_x = max(2, int(w * 0.05))
+    pad_y = max(2, int(h * 0.05))
 
-    roi = img_cv[ymin:ymax, xmin:xmax]
-    gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
-
-    # Identifica texto escuro sobre fundo claro do balão
-    _, mask = cv2.threshold(gray, 180, 255, cv2.THRESH_BINARY_INV)
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
-    mask_dilated = cv2.dilate(mask, kernel, iterations=2)
-
-    # Inpaint leve e rápido para processador ARM de celular
-    cleaned_roi = cv2.inpaint(roi, mask_dilated, inpaintRadius=3, flags=cv2.INPAINT_TELEA)
-    img_cv[ymin:ymax, xmin:xmax] = cleaned_roi
-    return img_cv
+    box = [xmin + pad_x, ymin + pad_y, xmax - pad_x, ymax - pad_y]
+    draw.ellipse(box, fill=(255, 255, 255))
+    return img_pil
 
 
 def wrap_text_to_lines(text, font, max_width, draw):
@@ -65,13 +54,11 @@ def render_dialogue_balloon(img_pil, text, xmin, ymin, xmax, ymax):
     box_w = max(10, int(xmax - xmin))
     box_h = max(10, int(ymax - ymin))
 
-    # Margem de respiro para o texto não encostar na borda do balão
     pad_w = int(box_w * 0.12)
     pad_h = int(box_h * 0.12)
     target_w = max(10, box_w - 2 * pad_w)
     target_h = max(10, box_h - 2 * pad_h)
 
-    # Procura tamanho de fonte ideal dinamicamente
     font_size = max(12, int(box_h * 0.22))
     best_font = None
     best_lines = []
@@ -105,7 +92,6 @@ def render_dialogue_balloon(img_pil, text, xmin, ymin, xmax, ymax):
         cur_x = xmin + (box_w - lw) // 2
         cur_y = start_y + i * line_height
 
-        # Borda sutil branca (outline) para leitura nítida e texto em preto puro
         for ox in (-1, 1):
             for oy in (-1, 1):
                 draw.text((cur_x + ox, cur_y + oy), line, font=best_font, fill=(255, 255, 255))

@@ -5,12 +5,11 @@ Regra de Ouro: Coeso, desacoplado e estritamente < 300 linhas.
 """
 
 import os
+import io
 import re
 import json
 import base64
 import requests
-import cv2
-import numpy as np
 from PIL import Image
 
 import mobile_config
@@ -18,19 +17,17 @@ import mobile_typesetter
 
 
 def encode_image_base64(img_path, max_dim=1400):
-    """Redimensiona se necessário e codifica a imagem em base64 para envio à API."""
-    im = cv2.imread(img_path)
-    if im is None:
-        return None, (0, 0)
-    h, w = im.shape[:2]
-    if max(h, w) > max_dim:
-        scale = max_dim / float(max(h, w))
-        nw, nh = int(w * scale), int(h * scale)
-        im = cv2.resize(im, (nw, nh), interpolation=cv2.INTER_AREA)
-    is_ok, buf = cv2.imencode(".jpg", im, [cv2.IMWRITE_JPEG_QUALITY, 85])
-    if not is_ok:
-        return None, (h, w)
-    return base64.b64encode(buf.tobytes()).decode("utf-8"), (h, w)
+    """Redimensiona se necessário e codifica a imagem em base64 usando Pillow."""
+    with Image.open(img_path) as im:
+        im = im.convert("RGB")
+        orig_w, orig_h = im.size
+        if max(orig_w, orig_h) > max_dim:
+            scale = max_dim / float(max(orig_w, orig_h))
+            nw, nh = int(orig_w * scale), int(orig_h * scale)
+            im = im.resize((nw, nh), Image.Resampling.LANCZOS)
+        buf = io.BytesIO()
+        im.save(buf, format="JPEG", quality=85)
+        return base64.b64encode(buf.getvalue()).decode("utf-8"), (orig_h, orig_w)
 
 
 def call_gemini_vision(img_b64, api_key):
@@ -88,8 +85,8 @@ def process_single_page(img_path, out_path, config):
         raise ValueError(f"Não foi possível ler a imagem: {img_path}")
 
     bubbles = call_gemini_vision(b64, gemini_key)
-    img_cv = cv2.imread(img_path)
-    real_h, real_w = img_cv.shape[:2]
+    img_pil = Image.open(img_path).convert("RGB")
+    real_w, real_h = img_pil.size
 
     # Passo 1: Limpeza cirúrgica de cada balão
     for item in bubbles:
@@ -99,10 +96,9 @@ def process_single_page(img_path, out_path, config):
             xmin = int((box[1] / 1000.0) * real_w)
             ymax = int((box[2] / 1000.0) * real_h)
             xmax = int((box[3] / 1000.0) * real_w)
-            img_cv = mobile_typesetter.clean_balloon_area(img_cv, xmin, ymin, xmax, ymax)
+            img_pil = mobile_typesetter.clean_balloon_area(img_pil, xmin, ymin, xmax, ymax)
 
     # Passo 2: Diagramação com tipografia responsiva
-    img_pil = Image.fromarray(cv2.cvtColor(img_cv, cv2.COLOR_BGR2RGB))
     for item in bubbles:
         box = item.get("box_2d", [])
         trans = item.get("translation", "").strip()
