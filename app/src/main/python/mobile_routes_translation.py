@@ -229,12 +229,12 @@ def api_config():
         cfg.update(data)
         cfg["use_local_llm"] = False
         saved = mobile_config.save_config(cfg)
-        cfg["app_version"] = "0.6.9-beta"
-        cfg["app_version_name"] = "v0.6.9 Beta"
+        cfg["app_version"] = "0.7.0-beta"
+        cfg["app_version_name"] = "v0.7.0 Beta"
         return jsonify({"success": saved, "config": cfg})
     cfg = mobile_config.load_config()
-    cfg["app_version"] = "0.6.9-beta"
-    cfg["app_version_name"] = "v0.6.9 Beta"
+    cfg["app_version"] = "0.7.0-beta"
+    cfg["app_version_name"] = "v0.7.0 Beta"
     return jsonify(cfg)
 
 

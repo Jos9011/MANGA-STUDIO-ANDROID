@@ -42,12 +42,12 @@ jobs:
       - name: 📦 Preparar APK Final
         run: |
           mkdir -p build/outputs/apk/
-          cp app/build/outputs/apk/debug/app-debug.apk build/outputs/apk/MangaStudio-Mobile-v1.0.5.apk || true
+          cp app/build/outputs/apk/debug/app-debug.apk build/outputs/apk/MangaStudio-Mobile-v1.0.6.apk || true
 
       - name: 📤 Publicar APK como Artefato para Download
         uses: actions/upload-artifact@v4
         with:
-          name: MangaStudio-Mobile-v1.0.5-APK
+          name: MangaStudio-Mobile-v1.0.6-APK
           path: app/build/outputs/apk/debug/*.apk
           retention-days: 30
 
@@ -55,12 +55,12 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: v1.0.5-mobile
-          name: "Manga Studio Mobile v1.0.5 APK (Limpeza de Cavidade, Tipografia PT-BR, Pausar/Parar & Zero Duplicatas)"
+          tag_name: v1.0.6-mobile
+          name: "Manga Studio Mobile v1.0.6 APK (Versão Oficial v0.7.0 Beta)"
           body: |
-            ## 📱 Manga Studio Mobile v1.0.5 (APK Android)
+            ## 📱 Manga Studio Mobile v1.0.6 — Sistema Oficial v0.7.0 Beta
 
-            Migração completa das melhorias visuais, de controle e de estabilidade do sistema Desktop/Colab para o Android!
+            Versão sincronizada com o salto SemVer **v0.7.0 Beta** do Manga Studio!
 
             ### ✨ Novidades desta Versão:
             - 🧹 **Varredura Completa da Cavidade do Balão (Pillow Puro):** Detecta o interior fechado de cada balão branco sem pesar na RAM, apagando 100% de letras órfãs e resíduos (`I`, traços coloridos/cinzas) mantendo a borda preta intacta.

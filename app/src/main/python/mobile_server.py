@@ -21,8 +21,8 @@ app = Flask(
     static_url_path="/static"
 )
 
-APP_VERSION = "0.6.9-beta"
-APP_VERSION_NAME = "v0.6.9 Beta"
+APP_VERSION = "0.7.0-beta"
+APP_VERSION_NAME = "v0.7.0 Beta"
 
 
 @app.context_processor
