@@ -42,12 +42,12 @@ jobs:
       - name: 📦 Preparar APK Final
         run: |
           mkdir -p build/outputs/apk/
-          cp app/build/outputs/apk/debug/app-debug.apk build/outputs/apk/MangaStudio-Mobile-v1.0.4.apk || true
+          cp app/build/outputs/apk/debug/app-debug.apk build/outputs/apk/MangaStudio-Mobile-v1.0.5.apk || true
 
       - name: 📤 Publicar APK como Artefato para Download
         uses: actions/upload-artifact@v4
         with:
-          name: MangaStudio-Mobile-v1.0.4-APK
+          name: MangaStudio-Mobile-v1.0.5-APK
           path: app/build/outputs/apk/debug/*.apk
           retention-days: 30
 
@@ -55,23 +55,24 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: v1.0.4-mobile
-          name: "Manga Studio Mobile v1.0.4 APK (Groq Vision, Scroll Fluido & Correção de Capas)"
+          tag_name: v1.0.5-mobile
+          name: "Manga Studio Mobile v1.0.5 APK (Limpeza de Cavidade, Tipografia PT-BR, Pausar/Parar & Zero Duplicatas)"
           body: |
-            ## 📱 Manga Studio Mobile v1.0.4 (APK Android)
-            
-            Versão com correções completas para Gestos de Rolagem, Importação de Perfil de PC e Suporte a Groq Vision!
-            
-            ### ✨ Principais Correções e Melhorias:
-            - 📜 **Scroll Fluido e Responsivo**: Removido o interceptor de gestos nativo do Android (`SwipeRefreshLayout`), permitindo rolagem livre (subir e descer) em qualquer ponto da biblioteca e do leitor.
-            - ⚡ **Suporte Nativo a Groq Vision & OpenRouter**: O motor de tradução agora suporta Groq Vision (`qwen/qwen3.8-27b`, `llama-3.2-11b-vision-preview`), OpenRouter e Gemini Vision com rotação automática de chaves da sua lista.
-            - 🔄 **Importação de Perfil do PC Sanitizada**: Ao importar `config.json` do seu computador, o app ignora caminhos com letras de unidade Windows (`C:\...`) para preservar o armazenamento do celular e sincroniza perfeitamente as chaves `groq_api_keys`.
-            - 🖼️ **Correção nas Capas dos Mangás**: As miniaturas agora contam com fallback instantâneo para o logo do Manga Studio quando o caminho original não puder ser lido, eliminando ícones quebrados na biblioteca.
-            - 🛡️ **Garantia de Páginas no Leitor**: Caso alguma página sofra oscilação de rede ou cota durante a tradução, a página original é mantida como fallback, garantindo que o capítulo completo seja gerado junto com o `leitor.html` e o `.cbz`.
-            
+            ## 📱 Manga Studio Mobile v1.0.5 (APK Android)
+
+            Migração completa das melhorias visuais, de controle e de estabilidade do sistema Desktop/Colab para o Android!
+
+            ### ✨ Novidades desta Versão:
+            - 🧹 **Varredura Completa da Cavidade do Balão (Pillow Puro):** Detecta o interior fechado de cada balão branco sem pesar na RAM, apagando 100% de letras órfãs e resíduos (`I`, traços coloridos/cinzas) mantendo a borda preta intacta.
+            - 🔤 **Fontes Profissionais de Scanlation + Tipografia PT-BR Calibrada:** Fontes `Anime Ace`, `Komika` e `Shout` embutidas no APK, medição real de acentos maiúsculos (`ÁÇÃÊÓÚg`) sem colisão entre linhas e sem hifenizações feias em palavras curtas.
+            - ⏸️ **Controles de Pausar / Retomar e Parar Tradução:** Pause ou interrompa a tradução a qualquer momento preservando as páginas já traduzidas no leitor offline.
+            - 📚 **Biblioteca sem Duplicatas:** Resolução de *symlinks* do Android (`/sdcard` ↔ `/storage/emulated/0`) e deduplicação automática entre pasta descompactada e `.cbz`.
+            - 🔑 **Importar / Exportar Perfil Seguro:** Impede exportação de backup vazio sem aviso e nunca sobrescreve chaves válidas com listas vazias `[]`.
+            - 🌐 **Pronome `"I"` → `"Eu"`:** Prompt calibrado para sempre traduzir `"I"` corretamente em PT-BR.
+
             ### 📥 Como instalar:
             1. Baixe o arquivo `app-debug.apk` abaixo no seu celular.
-            2. Instale a atualização e aproveite a leitura e tradução sem bugs!
+            2. Instale por cima da versão anterior e aproveite!
           files: app/build/outputs/apk/debug/*.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

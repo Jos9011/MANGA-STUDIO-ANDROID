@@ -16,24 +16,34 @@ import mobile_config
 MANGA_PATH_CACHE = {}
 
 
+def real_path_key(path):
+    """Retorna chave canônica resolvendo symlinks (/sdcard -> /storage/emulated/0)."""
+    if not path:
+        return ""
+    try:
+        return os.path.normcase(os.path.realpath(path))
+    except Exception:
+        return os.path.normcase(os.path.abspath(path))
+
+
 def get_manga_hash(path):
     """Gera um hash curto para identificar a pasta na URL do leitor web."""
     clean = os.path.abspath(path).replace("\\", "/")
-    h = hashlib.md5(clean.encode("utf-8")).hexdigest()[:12]
+    h = hashlib.md5(real_path_key(clean).encode("utf-8")).hexdigest()[:12]
     MANGA_PATH_CACHE[h] = clean
     return h
 
 
 def find_drive_roots():
-    """Retorna locais onde o Google Drive e mangás são armazenados no Android."""
+    """Retorna locais únicos do Android/Drive sem duplicar symlinks."""
     candidates = [
         "/storage/emulated/0/Download",
-        "/sdcard/Download",
         "/storage/emulated/0/MANGAS",
-        "/sdcard/MANGAS",
         "/storage/emulated/0/Google Drive",
-        "/sdcard/Google Drive",
         "/storage/emulated/0/Documents",
+        "/sdcard/Download",
+        "/sdcard/MANGAS",
+        "/sdcard/Google Drive",
         "/sdcard/Documents",
         os.path.expanduser("~/storage/shared/Download"),
         os.path.expanduser("~/storage/shared/MANGAS"),
@@ -44,8 +54,14 @@ def find_drive_roots():
         if extra and extra not in candidates:
             candidates.append(extra)
 
-    roots = [c for c in candidates if c and os.path.exists(c)]
-    return roots if roots else ["/storage/emulated/0/Download", "/sdcard/MANGAS"]
+    roots, seen_real = [], set()
+    for c in candidates:
+        if c and os.path.exists(c):
+            rk = real_path_key(c)
+            if rk not in seen_real:
+                seen_real.add(rk)
+                roots.append(os.path.abspath(c))
+    return roots if roots else ["/storage/emulated/0/Download", "/storage/emulated/0/MANGAS"]
 
 
 def is_drive_path(p):
@@ -185,16 +201,38 @@ def generate_thumbnail(img_path):
     return None
 
 
+def deduplicate_entries(entries):
+    """Remove duplicatas lógicas (pasta + CBZ ou caminhos espelhados)."""
+    best = {}
+    for entry in entries:
+        key = (entry.get("clean_name") or entry.get("name") or "").strip().lower()
+        if not key:
+            continue
+        prev = best.get(key)
+        if not prev:
+            best[key] = entry
+            continue
+        sc_new = (not entry.get("is_archive", False), bool(entry.get("has_reader", False)), entry.get("mtime", 0))
+        sc_old = (not prev.get("is_archive", False), bool(prev.get("has_reader", False)), prev.get("mtime", 0))
+        if sc_new > sc_old:
+            best[key] = entry
+    return list(best.values())
+
+
 def scan_directory(base_folder, seen_paths):
-    """Varre pasta e retorna dados de mangás e arquivos compactados."""
+    """Varre pasta resolvendo symlinks e priorizando pastas sobre arquivos .cbz/.zip."""
     entries = []
     if not base_folder or not os.path.exists(base_folder):
         return entries
     img_exts = (".jpg", ".jpeg", ".png", ".webp")
 
-    for item in sorted(os.listdir(base_folder)):
+    items = sorted(os.listdir(base_folder))
+    items.sort(key=lambda name: (not os.path.isdir(os.path.join(base_folder, name)), name.lower()))
+
+    for item in items:
         full_p = os.path.abspath(os.path.join(base_folder, item))
-        if full_p in seen_paths or item.startswith(".") or item == "_ocr":
+        rk = real_path_key(full_p)
+        if rk in seen_paths or item.startswith(".") or item == "_ocr":
             continue
 
         if os.path.isdir(full_p):
@@ -202,7 +240,7 @@ def scan_directory(base_folder, seen_paths):
             if not imgs:
                 continue
             imgs.sort(key=natural_sort_key)
-            seen_paths.add(full_p)
+            seen_paths.add(rk)
             m_id = get_manga_hash(full_p)
             has_reader = os.path.exists(os.path.join(full_p, "leitor.html"))
             cbz_p = full_p.rstrip("/\\") + ".cbz"
@@ -226,13 +264,16 @@ def scan_directory(base_folder, seen_paths):
             })
 
         elif os.path.isfile(full_p) and item.lower().endswith((".zip", ".cbz")):
+            unpacked = os.path.splitext(full_p)[0]
+            if real_path_key(unpacked) in seen_paths or os.path.isdir(unpacked):
+                continue
             try:
                 with zipfile.ZipFile(full_p, "r") as z:
                     zip_imgs = [inf.filename for inf in z.infolist() if not inf.is_dir() and inf.filename.lower().endswith(img_exts)]
                     if not zip_imgs:
                         continue
                     zip_imgs.sort(key=natural_sort_key)
-                    seen_paths.add(full_p)
+                    seen_paths.add(rk)
                     m_id = get_manga_hash(full_p)
                     clean_n = os.path.splitext(item)[0]
                     entries.append({

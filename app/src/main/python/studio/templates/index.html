@@ -2083,9 +2083,19 @@
             </div>
           </div>
 
-          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 12px;">
-            <h4 style="font-size: 1.1rem; font-weight: 700;">Progresso em Tempo Real</h4>
-            <span id="progress-status-badge" style="color: var(--spotify-green); font-weight: 700; font-size: 0.9rem;">Processando...</span>
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 12px;">
+            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+              <h4 style="font-size: 1.1rem; font-weight: 700; margin: 0;">Progresso em Tempo Real</h4>
+              <span id="progress-status-badge" style="color: var(--spotify-green); font-weight: 700; font-size: 0.9rem;">Processando...</span>
+            </div>
+            <div id="job-control-actions" style="display: flex; align-items: center; gap: 8px;">
+              <button type="button" class="btn-secondary" id="btn-pause-job" onclick="togglePauseJob()" style="padding: 6px 14px; font-size: 0.84rem; border-color: rgba(241, 196, 15, 0.55); color: #f1c40f;">
+                ⏸️ Pausar
+              </button>
+              <button type="button" class="btn-secondary" id="btn-stop-job" onclick="stopActiveJob()" style="padding: 6px 14px; font-size: 0.84rem; border-color: rgba(255, 85, 85, 0.55); color: #ff5555;">
+                ⏹️ Parar
+              </button>
+            </div>
           </div>
 
           <div class="progress-bar-wrapper" style="margin-bottom: 16px;">
@@ -3295,8 +3305,33 @@
             logBox.scrollTop = logBox.scrollHeight;
           }
 
+          const jobCtrlBox = document.getElementById('job-control-actions');
+          const btnPause = document.getElementById('btn-pause-job');
+          const btnStop = document.getElementById('btn-stop-job');
+          const eqEl = document.getElementById('equalizer-anim');
+
+          if (data.status === 'running' || data.status === 'paused') {
+            if (jobCtrlBox) jobCtrlBox.style.display = 'flex';
+            if (btnPause) {
+              btnPause.dataset.state = data.status;
+              btnPause.disabled = false;
+              if (data.status === 'paused') {
+                btnPause.innerText = '▶️ Retomar';
+                btnPause.style.borderColor = 'rgba(29, 185, 84, 0.65)';
+                btnPause.style.color = 'var(--spotify-green)';
+              } else {
+                btnPause.innerText = '⏸️ Pausar';
+                btnPause.style.borderColor = 'rgba(241, 196, 15, 0.55)';
+                btnPause.style.color = '#f1c40f';
+              }
+            }
+            if (btnStop) btnStop.disabled = false;
+            if (eqEl) eqEl.style.display = data.status === 'paused' ? 'none' : 'flex';
+          }
+
           if (data.status === 'done') {
             clearInterval(pollInterval);
+            if (jobCtrlBox) jobCtrlBox.style.display = 'none';
             document.getElementById('btn-start').disabled = false;
             document.getElementById('btn-start').style.opacity = '1';
             const btnCol = document.getElementById('btn-colorize-only');
@@ -3304,22 +3339,65 @@
             activeResult = data.result;
             showActionButtons(data.result);
             loadLibrary();
-            const eqDone = document.getElementById('equalizer-anim');
-            if (eqDone) eqDone.style.display = 'none';
-          } else if (data.status === 'error') {
+            if (eqEl) eqEl.style.display = 'none';
+          } else if (data.status === 'cancelled') {
             clearInterval(pollInterval);
+            if (jobCtrlBox) jobCtrlBox.style.display = 'none';
             document.getElementById('btn-start').disabled = false;
             document.getElementById('btn-start').style.opacity = '1';
             const btnCol = document.getElementById('btn-colorize-only');
             if (btnCol) { btnCol.disabled = false; btnCol.style.opacity = '1'; }
-            const eqErr = document.getElementById('equalizer-anim');
-            if (eqErr) eqErr.style.display = 'none';
+            if (eqEl) eqEl.style.display = 'none';
+            loadLibrary();
+          } else if (data.status === 'error') {
+            clearInterval(pollInterval);
+            if (jobCtrlBox) jobCtrlBox.style.display = 'none';
+            document.getElementById('btn-start').disabled = false;
+            document.getElementById('btn-start').style.opacity = '1';
+            const btnCol = document.getElementById('btn-colorize-only');
+            if (btnCol) { btnCol.disabled = false; btnCol.style.opacity = '1'; }
+            if (eqEl) eqEl.style.display = 'none';
             alert(`Erro no processamento: ${data.error}`);
           }
         } catch (e) {
           console.error("Poll error:", e);
         }
       }, 700);
+    }
+
+    async function togglePauseJob() {
+      const btnPause = document.getElementById('btn-pause-job');
+      const isPaused = btnPause && btnPause.dataset.state === 'paused';
+      const endpoint = isPaused ? '/api/job/resume' : '/api/job/pause';
+      if (btnPause) btnPause.disabled = true;
+      try {
+        const res = await fetch(endpoint, { method: 'POST' });
+        const data = await res.json();
+        if (!data.success && data.error) alert(data.error);
+      } catch (e) {
+        alert('Erro ao alterar pausa: ' + e);
+      } finally {
+        if (btnPause) btnPause.disabled = false;
+      }
+    }
+
+    async function stopActiveJob() {
+      if (!confirm('Deseja parar a tradução agora?\nAs páginas já traduzidas serão preservadas na biblioteca.')) {
+        return;
+      }
+      const btnStop = document.getElementById('btn-stop-job');
+      if (btnStop) btnStop.disabled = true;
+      try {
+        const res = await fetch('/api/job/stop', { method: 'POST' });
+        const data = await res.json();
+        if (!data.success && data.error) {
+          alert(data.error);
+          if (btnStop) btnStop.disabled = false;
+        }
+      } catch (e) {
+        alert('Erro ao parar tradução: ' + e);
+        if (btnStop) btnStop.disabled = false;
+      }
     }
 
     function showActionButtons(result) {
@@ -4553,8 +4631,18 @@
     }
 
     function exportProfileJson() {
+      const hasCfgKeys = (currentConfig.groq_api_keys && currentConfig.groq_api_keys.length > 0) ||
+                         (currentConfig.openrouter_api_keys && currentConfig.openrouter_api_keys.length > 0) ||
+                         (currentConfig.gemini_api_keys && currentConfig.gemini_api_keys.length > 0);
       const raw = localStorage.getItem(PROFILE_STORAGE_KEY);
-      const dataToExport = raw ? JSON.parse(raw) : currentConfig;
+      const dataToExport = hasCfgKeys ? currentConfig : (raw ? JSON.parse(raw) : currentConfig);
+      const totalKeys = (dataToExport.groq_api_keys || []).length +
+                        (dataToExport.openrouter_api_keys || []).length +
+                        (dataToExport.gemini_api_keys || []).length;
+      if (totalKeys === 0) {
+        alert('⚠️ Atenção: Nenhuma chave de API está configurada no momento. Adicione suas chaves antes de exportar o backup.');
+        return;
+      }
       const blob = new Blob([JSON.stringify(dataToExport, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -4571,20 +4659,26 @@
       reader.onload = async (e) => {
         try {
           const imported = JSON.parse(e.target.result);
-          if (imported.groq_api_keys || imported.groq_api_key) {
-            const keys = imported.groq_api_keys || [imported.groq_api_key];
-            currentConfig.groq_api_keys = keys;
-            currentConfig.groq_api_key = keys[0];
+          const gKeys = (Array.isArray(imported.groq_api_keys) ? imported.groq_api_keys : (imported.groq_api_key ? [imported.groq_api_key] : [])).filter(k => k && String(k).trim());
+          const oKeys = (Array.isArray(imported.openrouter_api_keys) ? imported.openrouter_api_keys : (imported.openrouter_api_key ? [imported.openrouter_api_key] : [])).filter(k => k && String(k).trim());
+          const mKeys = (Array.isArray(imported.gemini_api_keys) ? imported.gemini_api_keys : (imported.gemini_api_key ? [imported.gemini_api_key] : [])).filter(k => k && String(k).trim());
+
+          const totalImported = gKeys.length + oKeys.length + mKeys.length;
+          if (totalImported === 0) {
+            alert('⚠️ Este arquivo JSON não contém nenhuma chave de API (Groq, OpenRouter ou Gemini).\nVerifique se você selecionou o arquivo de backup correto.');
+            return;
           }
-          if (imported.openrouter_api_keys || imported.openrouter_api_key) {
-            const orKeys = imported.openrouter_api_keys || [imported.openrouter_api_key];
-            currentConfig.openrouter_api_keys = orKeys;
-            currentConfig.openrouter_api_key = orKeys[0];
+          if (gKeys.length > 0) {
+            currentConfig.groq_api_keys = gKeys;
+            currentConfig.groq_api_key = gKeys[0];
           }
-          if (imported.gemini_api_keys || imported.gemini_api_key) {
-            const gemKeys = imported.gemini_api_keys || [imported.gemini_api_key];
-            currentConfig.gemini_api_keys = gemKeys;
-            currentConfig.gemini_api_key = gemKeys[0];
+          if (oKeys.length > 0) {
+            currentConfig.openrouter_api_keys = oKeys;
+            currentConfig.openrouter_api_key = oKeys[0];
+          }
+          if (mKeys.length > 0) {
+            currentConfig.gemini_api_keys = mKeys;
+            currentConfig.gemini_api_key = mKeys[0];
           }
           if (imported.groq_model) currentConfig.groq_model = imported.groq_model;
           if (imported.openrouter_model) currentConfig.openrouter_model = imported.openrouter_model;
@@ -4689,10 +4783,10 @@
       try {
         const res = await fetch('/api/progress');
         const data = await res.json();
-        if (data && data.status === 'running') {
+        if (data && (data.status === 'running' || data.status === 'paused')) {
           document.getElementById('live-progress-section').style.display = 'block';
           const eq = document.getElementById('equalizer-anim');
-          if (eq) eq.style.display = 'flex';
+          if (eq) eq.style.display = data.status === 'paused' ? 'none' : 'flex';
           updatePlayerCover(data.first_img, data.manga_name, data.message);
           pollProgress();
         }

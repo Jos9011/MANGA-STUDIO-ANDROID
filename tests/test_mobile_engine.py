@@ -98,6 +98,39 @@ class MobileEngineTests(unittest.TestCase):
         self.assertEqual(len(bubbles), 1)
         self.assertEqual(bubbles[0]["translation"], "Teste")
 
+    def test_job_control_endpoints_and_deduplication(self):
+        client = app.test_client()
+        for ep in ("/api/job/pause", "/api/job/resume", "/api/job/stop"):
+            res = client.post(ep)
+            self.assertEqual(res.status_code, 400)
+
+        dups = [
+            {"name": "Obra A [PT-BR]", "clean_name": "Obra A", "is_archive": True, "has_reader": False, "mtime": 100},
+            {"name": "Obra A [PT-BR]", "clean_name": "Obra A", "is_archive": False, "has_reader": True, "mtime": 90},
+        ]
+        unique = mobile_drive_helper.deduplicate_entries(dups)
+        self.assertEqual(len(unique), 1)
+        self.assertFalse(unique[0]["is_archive"])
+
+    def test_mobile_font_consistency_and_cavity_cleaner(self):
+        f_greet = mobile_typesetter.select_mobile_font("FELIZ ANIVERSÁRIO, BORUTO!")
+        self.assertIsNotNone(f_greet)
+        self.assertNotIn("shout", os.path.basename(f_greet).lower())
+        f_shout = mobile_typesetter.select_mobile_font("O QUE EU FAÇO AGORA??!")
+        self.assertIsNotNone(f_shout)
+
+        # Desenha um balão branco fechado com borda preta e um 'I' escuro no canto interno
+        img = Image.new("RGB", (240, 160), (40, 40, 40))
+        from PIL import ImageDraw
+        d = ImageDraw.Draw(img)
+        d.ellipse([20, 20, 220, 140], fill=(255, 255, 255), outline=(0, 0, 0), width=4)
+        d.rectangle([50, 50, 58, 80], fill=(120, 30, 30))  # resíduo 'I' fora da caixa central
+        cleaned = mobile_typesetter.clean_balloon_area(img, 80, 50, 170, 100)
+        # O resíduo 'I' em (54, 65) deve ter sido varrido para branco!
+        self.assertEqual(cleaned.getpixel((54, 65)), (255, 255, 255))
+        # A arte escura externa em (5, 5) deve permanecer intacta!
+        self.assertEqual(cleaned.getpixel((5, 5)), (40, 40, 40))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -12,9 +12,11 @@ from flask import Blueprint, jsonify, request
 
 import mobile_config
 import mobile_drive_helper
+import mobile_job_control
 import mobile_translator
 
 trans_bp = Blueprint("trans_bp", __name__)
+_JOB_CTRL = mobile_job_control.JobController()
 
 _JOB_STATE = {
     "status": "idle",
@@ -66,8 +68,8 @@ def api_progress():
 @trans_bp.route("/api/start", methods=["POST"])
 def api_start():
     with _JOB_LOCK:
-        if _JOB_STATE["status"] == "running":
-            return jsonify({"error": "Já existe uma tradução em andamento!"}), 409
+        if _JOB_STATE["status"] in ("running", "paused"):
+            return jsonify({"error": "Já existe uma tradução em andamento ou pausada!"}), 409
 
     data = request.get_json() or {}
     path = data.get("path", "").strip("\"'")
@@ -84,6 +86,7 @@ def api_start():
     first_img = data.get("first_img", "")
 
     with _JOB_LOCK:
+        _JOB_CTRL.reset()
         _JOB_STATE["status"] = "running"
         _JOB_STATE["manga_name"] = manga_name
         _JOB_STATE["manga_path"] = target_dir
@@ -100,17 +103,56 @@ def api_start():
     def worker():
         try:
             def cb(status, cur, tot, msg, result=None):
-                set_job_progress(status=status, stage="translate", current=cur, total=tot, msg=msg, log=msg, result=result)
+                _JOB_CTRL.checkpoint()
+                eff_st = "running" if status == "translating" else status
+                set_job_progress(status=eff_st, stage="translate", current=cur, total=tot, msg=msg, log=msg, result=result)
 
             out_folder = mobile_translator.translate_manga_folder(target_dir, progress_cb=cb)
             clean_out = out_folder.rstrip("/\\")
             cbz_p = clean_out + ".cbz"
             set_job_progress(status="done", stage="done", current=1, total=1, msg="Concluído com sucesso!", log="Processo finalizado!", result={"output": out_folder, "cbz": cbz_p})
+        except mobile_job_control.JobCancelledError:
+            set_job_progress(status="cancelled", stage="cancelled", msg="Tradução interrompida pelo usuário.", log="⏹️ Tradução encerrada com segurança.")
         except Exception as e:
             set_job_progress(status="error", stage="error", msg=f"Erro: {str(e)}", log=f"[ERRO] {str(e)}", error=str(e))
 
     threading.Thread(target=worker, daemon=True).start()
     return jsonify({"success": True, "message": "Tradução iniciada"})
+
+
+@trans_bp.route("/api/job/pause", methods=["POST"])
+def api_job_pause():
+    with _JOB_LOCK:
+        if _JOB_STATE["status"] != "running":
+            return jsonify({"success": False, "error": "Nenhuma tradução ativa para pausar."}), 400
+        _JOB_CTRL.pause()
+        _JOB_STATE["status"] = "paused"
+        _JOB_STATE["message"] = "⏸️ Tradução pausada pelo usuário."
+        _JOB_STATE["logs"].append("⏸️ Pausa solicitada...")
+    return jsonify({"success": True, "status": "paused"})
+
+
+@trans_bp.route("/api/job/resume", methods=["POST"])
+def api_job_resume():
+    with _JOB_LOCK:
+        if _JOB_STATE["status"] != "paused":
+            return jsonify({"success": False, "error": "A tradução não está pausada."}), 400
+        _JOB_CTRL.resume()
+        _JOB_STATE["status"] = "running"
+        _JOB_STATE["message"] = "▶️ Tradução retomada..."
+        _JOB_STATE["logs"].append("▶️ Tradução retomada.")
+    return jsonify({"success": True, "status": "running"})
+
+
+@trans_bp.route("/api/job/stop", methods=["POST"])
+def api_job_stop():
+    with _JOB_LOCK:
+        if _JOB_STATE["status"] not in ("running", "paused"):
+            return jsonify({"success": False, "error": "Nenhuma tradução ativa para parar."}), 400
+        _JOB_CTRL.stop()
+        _JOB_STATE["message"] = "⏹️ Parando tradução com segurança..."
+        _JOB_STATE["logs"].append("⏹️ Cancelamento solicitado...")
+    return jsonify({"success": True, "status": "stopping"})
 
 
 @trans_bp.route("/api/colorize", methods=["POST"])

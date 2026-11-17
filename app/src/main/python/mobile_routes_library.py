@@ -98,6 +98,8 @@ def api_library():
             else:
                 raw.append(e)
 
+    translated = mobile_drive_helper.deduplicate_entries(translated)
+    raw = mobile_drive_helper.deduplicate_entries(raw)
     translated.sort(key=lambda x: x["mtime"], reverse=True)
     raw.sort(key=lambda x: x["mtime"], reverse=True)
     return jsonify({

@@ -13,16 +13,19 @@ import shutil
 import requests
 from PIL import Image
 
+import mobile_balloon_cleaner
 import mobile_config
 import mobile_typesetter
 
 PROMPT = (
-    "Você é um tradutor especialista de mangás para Português do Brasil (PT-BR). "
-    "Analise a página de mangá. Detecte todos os balões de fala japoneses legíveis. "
-    "Retorne ESTRITAMENTE um JSON no formato: "
+    "Você é um tradutor especialista de mangás/quadrinhos para Português do Brasil (PT-BR). "
+    "Analise a página e detecte todos os balões de fala legíveis (japonês, chinês, coreano ou inglês). "
+    "Agrupe todas as linhas de um mesmo balão em UM único item. "
+    "Traduza sempre o pronome inglês 'I' (sozinho ou na frase) como 'Eu' — NUNCA deixe 'I' solto em inglês. "
+    "Ignore letras soltas vazadas de scans antigos em balões asiáticos. "
+    "Retorne ESTRITAMENTE um JSON: "
     '[{"box_2d": [ymin, xmin, ymax, xmax], "translation": "texto traduzido em PT-BR"}]. '
-    "As coordenadas ymin, xmin, ymax, xmax devem estar normalizadas entre 0 e 1000. "
-    "Se não houver balões, retorne []. Retorne apenas o JSON, sem markdown ou texto extra."
+    "Coordenadas entre 0 e 1000. Se não houver falas, retorne []. Apenas JSON válido."
 )
 
 
@@ -196,42 +199,40 @@ def call_vision_api(img_b64, cfg):
 
 
 def process_single_page(img_path, out_path, config):
-    """Processa uma página: envia para IA, limpa balões e renderiza texto traduzido."""
+    """Processa página: chama Vision, varre cavidades de balão e diagrama em PT-BR."""
     b64, (orig_h, orig_w) = encode_image_base64(img_path, config.get("max_image_dim", 1400))
     bubbles = call_vision_api(b64, config)
 
     img_pil = Image.open(img_path).convert("RGB")
     real_w, real_h = img_pil.size
-
-    for item in bubbles:
-        box = item.get("box_2d", [])
-        if len(box) == 4:
-            ymin, xmin = int((box[0] / 1000.0) * real_h), int((box[1] / 1000.0) * real_w)
-            ymax, xmax = int((box[2] / 1000.0) * real_h), int((box[3] / 1000.0) * real_w)
-            img_pil = mobile_typesetter.clean_balloon_area(img_pil, xmin, ymin, xmax, ymax)
+    safe_regions = []
 
     for item in bubbles:
         box = item.get("box_2d", [])
         trans = item.get("translation", "").strip()
-        if len(box) == 4 and trans:
+        if len(box) == 4:
             ymin, xmin = int((box[0] / 1000.0) * real_h), int((box[1] / 1000.0) * real_w)
             ymax, xmax = int((box[2] / 1000.0) * real_h), int((box[3] / 1000.0) * real_w)
-            img_pil = mobile_typesetter.render_dialogue_balloon(img_pil, trans, xmin, ymin, xmax, ymax)
+            img_pil, sbox = mobile_balloon_cleaner.clean_and_locate_balloon(img_pil, xmin, ymin, xmax, ymax)
+            if trans:
+                safe_regions.append((sbox, trans))
+
+    for (sx0, sy0, sx1, sy1), trans in safe_regions:
+        img_pil = mobile_typesetter.render_dialogue_balloon(img_pil, trans, sx0, sy0, sx1, sy1)
 
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     img_pil.save(out_path, "JPEG", quality=92)
-    return len(bubbles)
+    return len(safe_regions)
 
 
 def translate_manga_folder(input_folder, output_folder=None, progress_cb=None):
-    """Traduz todas as páginas de uma pasta de mangá com resiliência total a erros."""
+    """Traduz páginas com suporte a pausa/parada e preservação de progresso parcial."""
     cfg = mobile_config.load_config()
     exts = (".jpg", ".jpeg", ".png", ".webp")
     files = sorted([f for f in os.listdir(input_folder) if f.lower().endswith(exts)])
     if not files:
         raise ValueError(f"Nenhuma imagem encontrada em: {input_folder}")
 
-    # Validação antecipada de chaves para evitar processamento inútil
     has_keys = bool(
         cfg.get("groq_api_keys") or cfg.get("groq_api_key") or
         cfg.get("gemini_api_keys") or cfg.get("gemini_api_key") or
@@ -247,27 +248,30 @@ def translate_manga_folder(input_folder, output_folder=None, progress_cb=None):
     os.makedirs(output_folder, exist_ok=True)
     total = len(files)
 
-    for idx, fname in enumerate(files):
-        in_p = os.path.join(input_folder, fname)
-        out_p = os.path.join(output_folder, f"{os.path.splitext(fname)[0]}.jpg")
-        if progress_cb:
-            progress_cb("translating", idx + 1, total, f"Traduzindo página {idx + 1}/{total} ({fname})...")
+    try:
+        for idx, fname in enumerate(files):
+            in_p = os.path.join(input_folder, fname)
+            out_p = os.path.join(output_folder, f"{os.path.splitext(fname)[0]}.jpg")
+            if progress_cb:
+                progress_cb("translating", idx + 1, total, f"Traduzindo página {idx + 1}/{total} ({fname})...")
 
-        try:
-            process_single_page(in_p, out_p, cfg)
-        except Exception as e:
-            print(f"[!] Erro ao traduzir {fname}: {e}")
-            if not os.path.exists(out_p):
-                try:
-                    with Image.open(in_p) as im:
-                        im.convert("RGB").save(out_p, "JPEG", quality=90)
-                except Exception as save_err:
-                    print(f"[!] Erro no fallback de cópia {fname}: {save_err}")
+            try:
+                process_single_page(in_p, out_p, cfg)
+            except Exception as e:
+                print(f"[!] Erro ao traduzir {fname}: {e}")
+                if not os.path.exists(out_p):
+                    try:
+                        with Image.open(in_p) as im:
+                            im.convert("RGB").save(out_p, "JPEG", quality=90)
+                    except Exception as save_err:
+                        print(f"[!] Erro no fallback de cópia {fname}: {save_err}")
+    finally:
+        if any(f.lower().endswith(exts) for f in os.listdir(output_folder)):
+            mobile_typesetter.make_offline_reader(output_folder, os.path.basename(output_folder))
 
     clean_out = output_folder.rstrip("/\\")
     cbz_path = clean_out + ".cbz"
     mobile_typesetter.make_cbz_package(output_folder, cbz_path)
-    mobile_typesetter.make_offline_reader(output_folder, os.path.basename(output_folder))
 
     if progress_cb:
         progress_cb("done", total, total, "Tradução concluída com sucesso!", result={"cbz": cbz_path})
