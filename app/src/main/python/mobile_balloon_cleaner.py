@@ -113,15 +113,25 @@ def clean_and_locate_balloon(img_pil, xmin, ymin, xmax, ymax):
     comp = _flood_fill_mask(bright_grid, ww, wh, seeds)
     filled = _fill_interior_holes(comp, ww, wh)
 
-    # Verificação anti-vazamento (evita pintar fundo aberto sem contorno fechado)
+    # Verificação anti-vazamento estrita (protege rostos/cabelos brancos em mangás P&B)
     top_t = sum(filled[x] for x in range(ww)) / float(max(1, ww))
     bot_t = sum(filled[(wh - 1) * ww + x] for x in range(ww)) / float(max(1, ww))
     lft_t = sum(filled[y * ww] for y in range(wh)) / float(max(1, wh))
     rgt_t = sum(filled[y * ww + (ww - 1)] for y in range(wh)) / float(max(1, wh))
-    open_sides = sum(1 for t in (top_t, bot_t, lft_t, rgt_t) if t > 0.42)
-    fill_ratio = sum(filled) / float(max(1, ww * wh))
+    open_sides = sum(1 for t in (top_t, bot_t, lft_t, rgt_t) if t > 0.28)
+    filled_sum = sum(filled)
+    comp_sum = sum(comp)
+    holes_ratio = max(0, filled_sum - comp_sum) / float(max(1, filled_sum))
+    fill_ratio = filled_sum / float(max(1, ww * wh))
+    ocr_area = max(1, bw * bh)
 
-    if open_sides >= 3 or (open_sides >= 2 and fill_ratio > 0.65):
+    leaked = (
+        open_sides >= 2
+        or holes_ratio > 0.26
+        or fill_ratio > 0.72
+        or filled_sum > max(ocr_area * 4.5, 55000)
+    )
+    if leaked:
         draw = ImageDraw.Draw(img_pil)
         draw.rectangle([xmin, ymin, xmax, ymax], fill=(255, 255, 255))
         return img_pil, (xmin, ymin, xmax, ymax)

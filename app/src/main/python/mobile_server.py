@@ -21,13 +21,13 @@ app = Flask(
     static_url_path="/static"
 )
 
-APP_VERSION = "0.7.1-beta"
-APP_VERSION_NAME = "v0.7.1 Beta"
+APP_VERSION = "0.7.2-beta"
+APP_VERSION_NAME = "v0.7.2 Beta"
 
 
 @app.context_processor
 def inject_version():
-    """Injeta as variáveis oficiais da versão v0.6.9 Beta em todos os templates Jinja."""
+    """Injeta as variáveis oficiais da versão v0.7.2 Beta em todos os templates Jinja."""
     return {
         "app_version": APP_VERSION_NAME,
         "app_version_code": APP_VERSION,

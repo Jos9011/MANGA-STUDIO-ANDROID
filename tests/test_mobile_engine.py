@@ -131,6 +131,21 @@ class MobileEngineTests(unittest.TestCase):
         # A arte escura externa em (5, 5) deve permanecer intacta!
         self.assertEqual(cleaned.getpixel((5, 5)), (40, 40, 40))
 
+    def test_bw_open_bubble_anti_leak_preserves_character_art(self):
+        """Garante que balão nuvem/aberto em mangá P&B jamais apague traços do rosto/cabelo."""
+        from PIL import ImageDraw
+        img = Image.new("RGB", (400, 300), (255, 255, 255))
+        d = ImageDraw.Draw(img)
+        # Traço de olho/rosto fora da caixa OCR (em fundo branco P&B sem borda fechada)
+        d.ellipse([90, 120, 140, 160], fill=(15, 15, 15))
+        # Texto original dentro da caixa OCR
+        d.rectangle([230, 80, 290, 110], fill=(20, 20, 20))
+        cleaned = mobile_typesetter.clean_balloon_area(img, 220, 70, 300, 120)
+        # O texto dentro da caixa foi limpo
+        self.assertEqual(cleaned.getpixel((260, 95)), (255, 255, 255))
+        # O olho/rosto em (115, 140) precisa continuar 100% intacto!
+        self.assertEqual(cleaned.getpixel((115, 140)), (15, 15, 15))
+
 
 if __name__ == "__main__":
     unittest.main()
