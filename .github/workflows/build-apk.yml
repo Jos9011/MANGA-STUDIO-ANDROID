@@ -42,12 +42,12 @@ jobs:
       - name: 📦 Preparar APK Final
         run: |
           mkdir -p build/outputs/apk/
-          cp app/build/outputs/apk/debug/app-debug.apk build/outputs/apk/MangaStudio-Mobile-v1.0.8.apk || true
+          cp app/build/outputs/apk/debug/app-debug.apk build/outputs/apk/MangaStudio-Mobile-v1.0.9.apk || true
 
       - name: 📤 Publicar APK como Artefato para Download
         uses: actions/upload-artifact@v4
         with:
-          name: MangaStudio-Mobile-v1.0.8-APK
+          name: MangaStudio-Mobile-v1.0.9-APK
           path: app/build/outputs/apk/debug/*.apk
           retention-days: 30
 
@@ -55,21 +55,18 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: v1.0.8-mobile
-          name: "Manga Studio Mobile v1.0.8 APK (v0.7.2 Beta — Proteção Anti-Vazamento em Mangás P&B)"
+          tag_name: v1.0.9-mobile
+          name: "Manga Studio Mobile v1.0.9 APK (v0.7.3 Beta — Suporte a Gemini 3.1 Flash Lite & Chaves AQ)"
           body: |
-            ## 📱 Manga Studio Mobile v1.0.8 — Sistema Oficial v0.7.2 Beta
+            ## 📱 Manga Studio Mobile v1.0.9 — Sistema Oficial v0.7.3 Beta
 
-            Proteção matemática anti-vazamento para mangás Preto e Branco (P&B), preservando 100% de rostos, olhos, bocas e cabelos brancos quando balões sem borda encostam no personagem!
+            Integração nativa dos novos modelos Gemini 3.1 Flash Lite e suporte completo a chaves Google AI Studio com prefixo `AQ.` para o OCR IA Vision Híbrido!
 
-            ### 🛡️ Correção Crítica desta Versão:
-            - 🎨 **Trava Anti-Vazamento P&B (`mobile_balloon_cleaner.py`):** Impede que o flood-fill de balões brancos abertos/nuvem vaze para cabelos ou pele branca em mangás sem cor, verificando lados abertos, proporção de furos internos (`holes_ratio`), taxa de preenchimento e limite de área em relação à caixa OCR. Em caso de vazamento detectado, aplica limpeza cirúrgica restrita à caixa do texto — preservando o desenho intacto.
-
-            ### ✨ Recursos Incluídos:
-            - ⚡ **Cotas Reais ao Vivo (Todas as Chaves):** Consulta paralela de chaves Groq, OpenRouter e Gemini com barras reais de RPD/TPM.
-            - 🖼️ **Capas Nativas à Prova de Falhas:** Suporte a capas em ZIP/WebP/PNG/JPG com fallback nativo para WebView Android.
-            - ☁️ **Seletor Google Drive SAF (`ACTION_OPEN_DOCUMENT`):** Seleção direta de `.zip`, `.cbz`, `.json` e imagens no Google Drive.
-            - 🧹 **Varredura de Cavidade de Balões Fechados + Fontes Profissionais PT-BR + Pausar/Parar Tradução.**
+            ### 🚀 Novidades e Otimizações desta Versão:
+            - 👁️ **Suporte a Gemini 3.1 Flash Lite:** Atualizados os modelos prioritários de visão para `gemini-3.1-flash-lite` e `gemini-3.5-flash-lite`, contornando a depreciação de modelos legados (2.5/2.0-flash) e garantindo respostas instantâneas no OCR Vision.
+            - 🔑 **Compatibilidade com Chaves `AQ.`:** Reconhecimento nativo das novas chaves de API do Google AI Studio com prefixo `AQ.` sem falso aviso de validação.
+            - 🛡️ **Proteção Anti-Vazamento P&B:** Preservação integral de desenhos, rostos e cabelos brancos em mangás sem cor.
+            - ⚡ **Cotas Reais ao Vivo (Groq, OpenRouter e Gemini):** Monitoramento paralelo das chaves e uso de tokens.
 
             ### 📥 Como instalar:
             1. Baixe o arquivo `app-debug.apk` abaixo no seu celular.

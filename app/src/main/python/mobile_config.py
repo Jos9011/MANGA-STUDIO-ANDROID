@@ -49,7 +49,7 @@ def get_default_config():
         "openrouter_api_keys": [],
         "provider": "auto",
         "groq_model": "qwen/qwen3.8-27b",
-        "gemini_model": "gemini-1.5-flash",
+        "gemini_model": "gemini-3.1-flash-lite",
         "openrouter_model": "nvidia/nemotron-3.5-lightning:free",
         "target_lang": "pt-BR",
         "input_dir": "/sdcard/MANGAS",

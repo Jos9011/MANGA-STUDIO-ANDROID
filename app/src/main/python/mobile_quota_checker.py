@@ -192,7 +192,7 @@ def build_live_status():
         "gemini": {
             "configured": bool(gem_pool),
             "keys": gem_results,
-            "active_model": cfg.get("gemini_model") or "gemini-2.5-flash",
+            "active_model": cfg.get("gemini_model") or "gemini-3.1-flash-lite",
         },
         "ollama": {
             "status": "disabled_mobile",
@@ -201,8 +201,8 @@ def build_live_status():
             "vision_models": [],
         },
         "vision": {
-            "provider": cfg.get("vision_provider") or ("groq" if groq_pool else ("gemini" if gem_pool else "openrouter")),
-            "gemini_model": cfg.get("gemini_model") or "gemini-2.5-flash",
+            "provider": cfg.get("vision_provider") or ("gemini" if gem_pool else ("groq" if groq_pool else "openrouter")),
+            "gemini_model": cfg.get("gemini_model") or "gemini-3.1-flash-lite",
             "groq_vision_model": cfg.get("groq_vision_model") or "qwen/qwen3.8-27b",
             "openrouter_vision_model": cfg.get("openrouter_vision_model") or "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
             "ollama_vision_model": "",

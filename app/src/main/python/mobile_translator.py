@@ -104,7 +104,7 @@ def call_groq_vision(img_b64, keys, model=None):
 
 def call_gemini_vision(img_b64, keys, model=None):
     """Executa detecção e tradução visual via Google Gemini Vision."""
-    model = model or "gemini-1.5-flash"
+    model = model or "gemini-3.1-flash-lite"
     last_err = None
 
     for key in keys:
