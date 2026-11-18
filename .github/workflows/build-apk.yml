@@ -42,12 +42,12 @@ jobs:
       - name: 📦 Preparar APK Final
         run: |
           mkdir -p build/outputs/apk/
-          cp app/build/outputs/apk/debug/app-debug.apk build/outputs/apk/MangaStudio-Mobile-v1.0.6.apk || true
+          cp app/build/outputs/apk/debug/app-debug.apk build/outputs/apk/MangaStudio-Mobile-v1.0.7.apk || true
 
       - name: 📤 Publicar APK como Artefato para Download
         uses: actions/upload-artifact@v4
         with:
-          name: MangaStudio-Mobile-v1.0.6-APK
+          name: MangaStudio-Mobile-v1.0.7-APK
           path: app/build/outputs/apk/debug/*.apk
           retention-days: 30
 
@@ -55,12 +55,17 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: v1.0.6-mobile
-          name: "Manga Studio Mobile v1.0.6 APK (Versão Oficial v0.7.0 Beta)"
+          tag_name: v1.0.7-mobile
+          name: "Manga Studio Mobile v1.0.7 APK (v0.7.1 Beta — Cotas Reais, Capas Nativas WebP/ZIP & Seletor Google Drive SAF)"
           body: |
-            ## 📱 Manga Studio Mobile v1.0.6 — Sistema Oficial v0.7.0 Beta
+            ## 📱 Manga Studio Mobile v1.0.7 — Sistema Oficial v0.7.1 Beta
 
-            Versão sincronizada com o salto SemVer **v0.7.0 Beta** do Manga Studio!
+            Correções críticas para Cotas em Tempo Real, Capas de Mangás em ZIP/WebP e Seletor Nativo do Google Drive!
+
+            ### ✨ Correções desta Versão:
+            - ⚡ **Cotas Reais ao Vivo (Todas as Chaves):** Novo módulo `mobile_quota_checker.py` que consulta em paralelo todas as chaves Groq, OpenRouter e Gemini, exibindo barras reais de RPD/TPM e ocultando erros falsos de chaves não configuradas.
+            - 🖼️ **Capas Nativas à Prova de Falhas:** Novo `mobile_thumb_helper.py` com compatibilidade Pillow + entrega direta de bytes WebP/PNG/JPG para a WebView Chromium quando o codec Pillow falhar no Android.
+            - ☁️ **Seletor Google Drive SAF (`ACTION_OPEN_DOCUMENT`):** Permite selecionar arquivos `.zip`, `.cbz`, `.json` e imagens diretamente do Google Drive sem travar ou acinzentar arquivos, além de sanitizar nomes de arquivos vindos do Drive no upload.
 
             ### ✨ Novidades desta Versão:
             - 🧹 **Varredura Completa da Cavidade do Balão (Pillow Puro):** Detecta o interior fechado de cada balão branco sem pesar na RAM, apagando 100% de letras órfãs e resíduos (`I`, traços coloridos/cinzas) mantendo a borda preta intacta.

@@ -13,6 +13,7 @@ from flask import Blueprint, jsonify, request
 import mobile_config
 import mobile_drive_helper
 import mobile_job_control
+import mobile_quota_checker
 import mobile_translator
 
 trans_bp = Blueprint("trans_bp", __name__)
@@ -178,47 +179,7 @@ def api_colorize():
 
 @trans_bp.route("/api/status")
 def api_status():
-    cfg = mobile_config.load_config()
-    gem_key = cfg.get("gemini_api_key", "").strip()
-    groq_key = cfg.get("groq_api_key", "").strip()
-    openr_key = cfg.get("openrouter_api_key", "").strip()
-
-    return jsonify({
-        "groq": {
-            "configured": bool(groq_key),
-            "keys": [{"index": 0, "status": "active" if groq_key else "empty", "key_masked": (groq_key[:6] + "...") if groq_key else "", "total_requests_remaining": 14400, "models": {}}],
-            "models": {"qwen/qwen3.8-27b": {"status": "ok" if groq_key else "untested"}},
-            "total_qwen_remaining": 14400 if groq_key else 0,
-            "total_qwen_limit": 14400,
-            "ready_keys_count": 1 if groq_key else 0,
-            "any_model_ready_keys": 1 if groq_key else 0,
-            "active_model": cfg.get("groq_model", "qwen/qwen3.8-27b"),
-            "fallback_model": "openai/gpt-oss-120b"
-        },
-        "gemini": {
-            "configured": bool(gem_key),
-            "keys": [{"index": 0, "status": "active" if gem_key else "empty", "key_masked": (gem_key[:6] + "...") if gem_key else ""}],
-            "active_model": "gemini-1.5-flash"
-        },
-        "openrouter": {
-            "configured": bool(openr_key),
-            "keys": [{"index": 0, "status": "active" if openr_key else "empty"}]
-        },
-        "ollama": {
-            "status": "disabled_mobile",
-            "message": "Desativado para celulares (utilizando Gemini / Groq Cloud)",
-            "models": [],
-            "vision_models": []
-        },
-        "vision": {
-            "provider": "gemini" if gem_key else "groq",
-            "gemini_model": "gemini-1.5-flash",
-            "groq_vision_model": "qwen/qwen3.8-27b",
-            "openrouter_vision_model": "qwen/qwen-2.5-vl-72b-instruct:free",
-            "ollama_vision_model": ""
-        },
-        "runtime_warnings": []
-    })
+    return jsonify(mobile_quota_checker.build_live_status())
 
 
 @trans_bp.route("/api/config", methods=["GET", "POST"])
@@ -229,12 +190,12 @@ def api_config():
         cfg.update(data)
         cfg["use_local_llm"] = False
         saved = mobile_config.save_config(cfg)
-        cfg["app_version"] = "0.7.0-beta"
-        cfg["app_version_name"] = "v0.7.0 Beta"
+        cfg["app_version"] = "0.7.1-beta"
+        cfg["app_version_name"] = "v0.7.1 Beta"
         return jsonify({"success": saved, "config": cfg})
     cfg = mobile_config.load_config()
-    cfg["app_version"] = "0.7.0-beta"
-    cfg["app_version_name"] = "v0.7.0 Beta"
+    cfg["app_version"] = "0.7.1-beta"
+    cfg["app_version_name"] = "v0.7.1 Beta"
     return jsonify(cfg)
 
 
