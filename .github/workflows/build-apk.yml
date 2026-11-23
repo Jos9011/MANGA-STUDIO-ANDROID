@@ -58,12 +58,12 @@ jobs:
       - name: 📦 Preparar APK Final
         run: |
           mkdir -p build/outputs/apk/
-          cp app/build/outputs/apk/debug/app-debug.apk build/outputs/apk/MangaStudio-Mobile-v1.0.10.apk || true
+          cp app/build/outputs/apk/debug/app-debug.apk build/outputs/apk/MangaStudio-Mobile-v1.0.11.apk || true
 
       - name: 📤 Publicar APK como Artefato para Download
         uses: actions/upload-artifact@v4
         with:
-          name: MangaStudio-Mobile-v1.0.10-APK
+          name: MangaStudio-Mobile-v1.0.11-APK
           path: app/build/outputs/apk/debug/*.apk
           retention-days: 30
 
@@ -71,19 +71,19 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: v1.0.10-mobile
-          name: "Manga Studio Mobile v1.0.10 APK (v0.7.4 Beta — Correções críticas de tradução e segurança)"
+          tag_name: v1.0.11-mobile
+          name: "Manga Studio Mobile v1.0.11 APK (v0.7.5 Beta — Páginas WebP/AVIF e correções críticas)"
           body: |
-            ## 📱 Manga Studio Mobile v1.0.10 — Sistema Oficial v0.7.4 Beta
+            ## 📱 Manga Studio Mobile v1.0.11 — Sistema Oficial v0.7.5 Beta
 
-            ### 🛠️ Correções críticas
-            - ⚠️ **Falhas por página agora aparecem no log** e o resumo final mostra quantas páginas foram traduzidas (antes: "Concluído com sucesso" mesmo sem traduzir nada).
-            - 🔁 **Fallback entre provedores:** se o provedor escolhido falhar (cota, bloqueio +18, modelo inválido), tenta os outros que tiverem chave.
-            - ✂️ **Respostas longas não são mais cortadas** (limite de tokens 1024 → 4096) e respostas cortadas são detectadas.
-            - 🔒 **Servidor local protegido por token:** outros apps do celular não conseguem mais ler suas chaves nem apagar arquivos.
-            - 🔢 **Ordem natural das páginas** (1, 2, 10) e **ZIP/CBZ com vários capítulos** sem perder páginas.
-            - 📥 **Botões de download de CBZ/ZIP funcionando** (salvos em Download/MangaStudio).
-            - 🔑 **Assinatura fixa do APK** (quando a keystore está configurada nos Secrets).
+            ### 🖼️ Correção: "cannot identify image file"
+            - Páginas que o Pillow do APK não lê (WebP, AVIF, HEIC) agora são abertas pelo decodificador nativo do Android.
+            - Se uma página realmente estiver corrompida, o log mostra o formato real do arquivo (ex.: "arquivo vazio", "HTML/texto").
+
+            ### 🛠️ Inclui as correções da v1.0.10
+            - Falhas por página visíveis no log e resumo final honesto.
+            - Fallback entre provedores e limite de tokens 4096.
+            - Servidor local protegido por token; ordem natural das páginas; ZIP multi-capítulo; downloads de CBZ/ZIP.
 
             ### 📥 Como instalar:
             1. Baixe o arquivo `app-debug.apk` abaixo no seu celular.

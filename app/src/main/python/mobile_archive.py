@@ -10,7 +10,7 @@ import zipfile
 
 import mobile_config
 
-IMG_EXTS = (".jpg", ".jpeg", ".png", ".webp", ".bmp")
+IMG_EXTS = (".jpg", ".jpeg", ".png", ".webp", ".bmp", ".avif")
 _BAD_CHARS = re.compile(r'[\\/*?:"<>|]')
 
 

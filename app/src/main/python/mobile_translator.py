@@ -13,24 +13,27 @@ from PIL import Image
 import mobile_balloon_cleaner
 import mobile_config
 import mobile_drive_helper
+import mobile_image_io
 import mobile_typesetter
 from mobile_vision_api import PROMPT, call_vision_api, extract_json_bubbles, collect_keys  # noqa: F401
 
-IMG_EXTS = (".jpg", ".jpeg", ".png", ".webp")
+IMG_EXTS = (".jpg", ".jpeg", ".png", ".webp", ".avif", ".bmp")
 
 
-def encode_image_base64(img_path, max_dim=1400):
-    """Redimensiona e codifica a imagem em base64. Retorna (b64, (altura_enviada, largura_enviada))."""
-    with Image.open(img_path) as im:
-        im = im.convert("RGB")
-        w, h = im.size
-        if max(w, h) > max_dim:
-            scale = max_dim / float(max(w, h))
-            im = im.resize((int(w * scale), int(h * scale)), Image.Resampling.LANCZOS)
-        buf = io.BytesIO()
-        im.save(buf, format="JPEG", quality=85)
-        sent_w, sent_h = im.size
-        return base64.b64encode(buf.getvalue()).decode("utf-8"), (sent_h, sent_w)
+def encode_image_base64(img, max_dim=1400):
+    """
+    Redimensiona e codifica a página em base64 (aceita caminho ou PIL.Image já aberta).
+    Retorna (b64, (altura_enviada, largura_enviada)).
+    """
+    im = img if isinstance(img, Image.Image) else mobile_image_io.open_rgb(img)
+    w, h = im.size
+    if max(w, h) > max_dim:
+        scale = max_dim / float(max(w, h))
+        im = im.resize((int(w * scale), int(h * scale)), Image.Resampling.LANCZOS)
+    buf = io.BytesIO()
+    im.save(buf, format="JPEG", quality=85)
+    sent_w, sent_h = im.size
+    return base64.b64encode(buf.getvalue()).decode("utf-8"), (sent_h, sent_w)
 
 
 def box_to_pixels(box, sent_w, sent_h, real_w, real_h):
@@ -64,10 +67,10 @@ def box_to_pixels(box, sent_w, sent_h, real_w, real_h):
 
 def process_single_page(img_path, out_path, config):
     """Processa página: chama Vision, varre cavidades de balão e diagrama em PT-BR. Retorna nº de balões."""
-    b64, (sent_h, sent_w) = encode_image_base64(img_path, config.get("max_image_dim", 1400))
+    img_pil = mobile_image_io.open_rgb(img_path)  # Pillow ou decodificador nativo do Android
+    b64, (sent_h, sent_w) = encode_image_base64(img_pil, config.get("max_image_dim", 1400))
     bubbles = call_vision_api(b64, config)
 
-    img_pil = Image.open(img_path).convert("RGB")
     real_w, real_h = img_pil.size
     safe_regions = []
 
@@ -151,8 +154,7 @@ def translate_manga_folder(input_folder, output_folder=None, progress_cb=None):
                 notify(idx + 1, f"⚠️ Página {idx + 1} NÃO traduzida ({out_name}): {err[:220]}")
                 if not os.path.exists(out_p):
                     try:
-                        with Image.open(in_p) as im:
-                            im.convert("RGB").save(out_p, "JPEG", quality=90)
+                        mobile_image_io.open_rgb(in_p).save(out_p, "JPEG", quality=90)
                         fallback_copies.append(out_p)
                     except Exception as save_err:
                         print(f"[!] Erro no fallback de cópia {out_name}: {save_err}")
