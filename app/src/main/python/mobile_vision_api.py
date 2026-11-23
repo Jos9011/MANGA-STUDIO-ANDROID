@@ -11,7 +11,7 @@ import requests
 PROMPT = (
     "Você é um tradutor especialista de mangás/quadrinhos para Português do Brasil (PT-BR). "
     "Analise a página e detecte todos os balões de fala legíveis (japonês, chinês, coreano ou inglês). "
-    "Agrupe todas as linhas de um mesmo balão em UM único item. "
+    "Agrupe todas as linhas de um mesmo balão em UM único item. Em falas divididas em múltiplos balões contíguos, preserve o sentido contínuo. "
     "Traduza sempre o pronome inglês 'I' (sozinho ou na frase) como 'Eu' — NUNCA deixe 'I' solto em inglês. "
     "Ignore letras soltas vazadas de scans antigos em balões asiáticos. "
     "Retorne ESTRITAMENTE um JSON: "
