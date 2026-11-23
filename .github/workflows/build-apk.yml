@@ -35,19 +35,35 @@ jobs:
         with:
           gradle-version: '8.4'
 
+      - name: 🔑 Restaurar keystore fixa (permite instalar por cima da versão anterior)
+        env:
+          KS_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KS_B64" ]; then
+            echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/mangastudio.jks"
+            echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/mangastudio.jks" >> "$GITHUB_ENV"
+            echo "Keystore fixa restaurada."
+          else
+            echo "::warning::Secret ANDROID_KEYSTORE_BASE64 ausente: APK assinado com chave de debug temporária (não instala por cima da versão anterior)."
+          fi
+
       - name: 🚀 Compilar APK (assembleDebug)
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           gradle assembleDebug --stacktrace
 
       - name: 📦 Preparar APK Final
         run: |
           mkdir -p build/outputs/apk/
-          cp app/build/outputs/apk/debug/app-debug.apk build/outputs/apk/MangaStudio-Mobile-v1.0.9.apk || true
+          cp app/build/outputs/apk/debug/app-debug.apk build/outputs/apk/MangaStudio-Mobile-v1.0.10.apk || true
 
       - name: 📤 Publicar APK como Artefato para Download
         uses: actions/upload-artifact@v4
         with:
-          name: MangaStudio-Mobile-v1.0.9-APK
+          name: MangaStudio-Mobile-v1.0.10-APK
           path: app/build/outputs/apk/debug/*.apk
           retention-days: 30
 
@@ -55,22 +71,23 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: v1.0.9-mobile
-          name: "Manga Studio Mobile v1.0.9 APK (v0.7.3 Beta — Suporte a Gemini 3.1 Flash Lite & Chaves AQ)"
+          tag_name: v1.0.10-mobile
+          name: "Manga Studio Mobile v1.0.10 APK (v0.7.4 Beta — Correções críticas de tradução e segurança)"
           body: |
-            ## 📱 Manga Studio Mobile v1.0.9 — Sistema Oficial v0.7.3 Beta
+            ## 📱 Manga Studio Mobile v1.0.10 — Sistema Oficial v0.7.4 Beta
 
-            Integração nativa dos novos modelos Gemini 3.1 Flash Lite e suporte completo a chaves Google AI Studio com prefixo `AQ.` para o OCR IA Vision Híbrido!
-
-            ### 🚀 Novidades e Otimizações desta Versão:
-            - 👁️ **Suporte a Gemini 3.1 Flash Lite:** Atualizados os modelos prioritários de visão para `gemini-3.1-flash-lite` e `gemini-3.5-flash-lite`, contornando a depreciação de modelos legados (2.5/2.0-flash) e garantindo respostas instantâneas no OCR Vision.
-            - 🔑 **Compatibilidade com Chaves `AQ.`:** Reconhecimento nativo das novas chaves de API do Google AI Studio com prefixo `AQ.` sem falso aviso de validação.
-            - 🛡️ **Proteção Anti-Vazamento P&B:** Preservação integral de desenhos, rostos e cabelos brancos em mangás sem cor.
-            - ⚡ **Cotas Reais ao Vivo (Groq, OpenRouter e Gemini):** Monitoramento paralelo das chaves e uso de tokens.
+            ### 🛠️ Correções críticas
+            - ⚠️ **Falhas por página agora aparecem no log** e o resumo final mostra quantas páginas foram traduzidas (antes: "Concluído com sucesso" mesmo sem traduzir nada).
+            - 🔁 **Fallback entre provedores:** se o provedor escolhido falhar (cota, bloqueio +18, modelo inválido), tenta os outros que tiverem chave.
+            - ✂️ **Respostas longas não são mais cortadas** (limite de tokens 1024 → 4096) e respostas cortadas são detectadas.
+            - 🔒 **Servidor local protegido por token:** outros apps do celular não conseguem mais ler suas chaves nem apagar arquivos.
+            - 🔢 **Ordem natural das páginas** (1, 2, 10) e **ZIP/CBZ com vários capítulos** sem perder páginas.
+            - 📥 **Botões de download de CBZ/ZIP funcionando** (salvos em Download/MangaStudio).
+            - 🔑 **Assinatura fixa do APK** (quando a keystore está configurada nos Secrets).
 
             ### 📥 Como instalar:
             1. Baixe o arquivo `app-debug.apk` abaixo no seu celular.
-            2. Instale por cima da versão anterior e aproveite!
+            2. Se for a primeira versão com assinatura fixa, desinstale a anterior uma única vez; depois disso as atualizações instalam por cima.
           files: app/build/outputs/apk/debug/*.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

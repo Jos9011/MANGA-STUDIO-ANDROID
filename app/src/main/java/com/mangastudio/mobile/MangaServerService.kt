@@ -27,6 +27,13 @@ class MangaServerService : Service() {
         var isServerReady = false
             private set
 
+        /** Token aleatório por processo: só a WebView do app conhece, outros apps recebem 403. */
+        val sessionToken: String by lazy {
+            val bytes = ByteArray(32)
+            java.security.SecureRandom().nextBytes(bytes)
+            bytes.joinToString("") { "%02x".format(it) }
+        }
+
         fun start(context: Context) {
             val intent = Intent(context, MangaServerService::class.java)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -86,7 +93,7 @@ class MangaServerService : Service() {
                 isServerReady = true
 
                 updateNotification("Pronto para traduzir mangás")
-                serverMod.callAttr("start_server", 5000)
+                serverMod.callAttr("start_server", 5000, sessionToken)
             } catch (e: Exception) {
                 e.printStackTrace()
                 isServerReady = false

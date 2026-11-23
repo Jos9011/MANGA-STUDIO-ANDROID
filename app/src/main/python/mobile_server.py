@@ -7,6 +7,8 @@ Regra de Ouro: Coeso, desacoplado e estritamente < 300 linhas.
 import os
 from flask import Flask, jsonify, render_template, send_from_directory
 
+import mobile_security
+from mobile_routes_export import export_bp
 from mobile_routes_library import library_bp
 from mobile_routes_translation import trans_bp
 
@@ -20,14 +22,15 @@ app = Flask(
     static_folder=STATIC_DIR,
     static_url_path="/static"
 )
+mobile_security.install(app)
 
-APP_VERSION = "0.7.3-beta"
-APP_VERSION_NAME = "v0.7.3 Beta"
+APP_VERSION = "0.7.4-beta"
+APP_VERSION_NAME = "v0.7.4 Beta"
 
 
 @app.context_processor
 def inject_version():
-    """Injeta as variáveis oficiais da versão v0.7.3 Beta em todos os templates Jinja."""
+    """Injeta as variáveis oficiais da versão v0.7.4 Beta em todos os templates Jinja."""
     return {
         "app_version": APP_VERSION_NAME,
         "app_version_code": APP_VERSION,
@@ -37,6 +40,7 @@ def inject_version():
 # Registra os módulos de rotas
 app.register_blueprint(library_bp)
 app.register_blueprint(trans_bp)
+app.register_blueprint(export_bp)
 
 
 @app.route("/")
@@ -80,9 +84,12 @@ def api_version():
     })
 
 
-def start_server(port=5000):
-    """Inicia o servidor Flask localmente na porta informada."""
+def start_server(port=5000, token=None):
+    """Inicia o servidor Flask local exigindo o token de sessão gerado pelo app Android."""
+    tok = mobile_security.set_token(token)
     print(f"[+] Servidor Manga Studio Mobile online em http://127.0.0.1:{port}")
+    if not token:
+        print(f"[+] Acesse: http://127.0.0.1:{port}/?token={tok}")
     app.run(host="127.0.0.1", port=port, debug=False, threaded=True)
 
 

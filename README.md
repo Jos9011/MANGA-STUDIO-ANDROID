@@ -24,7 +24,7 @@ Para rodar suavemente em qualquer smartphone moderno sem drenar bateria e sem so
 ## 📥 Como Baixar e Instalar no Celular
 
 1. Acesse a aba **[Releases](https://github.com/Jos9011/MANGA-STUDIO-ANDROID/releases)** deste repositório pelo celular.
-2. Baixe o arquivo **`MangaStudio-Mobile-v1.0.0.apk`**.
+2. Baixe o arquivo **`app-debug.apk`** da release mais recente.
 3. Toque no arquivo baixado e confirme a instalação (se o Android solicitar, permita a instalação a partir do navegador).
 4. Abra o aplicativo **Manga Studio**.
 5. No ícone de engrenagem (⚙️), insira sua chave gratuita do **Google Gemini Vision** (`AIza...`).

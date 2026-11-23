@@ -12,6 +12,7 @@ from flask import Blueprint, Response, jsonify, redirect, request, send_file, se
 
 import mobile_config
 import mobile_drive_helper
+import mobile_security
 import mobile_thumb_helper
 import mobile_typesetter
 
@@ -244,22 +245,15 @@ def api_upload():
     return jsonify({"success": True, "path": target_dir, "name": folder_name})
 
 
-@library_bp.route("/api/download_cbz")
-def api_download_cbz():
-    """Envia arquivo CBZ para download ou compartilhamento."""
-    path = request.args.get("path", "").strip("\"'")
-    if not path or not os.path.exists(path):
-        return jsonify({"error": "Arquivo não encontrado"}), 404
-    return send_file(path, as_attachment=True, download_name=os.path.basename(path))
-
-
 @library_bp.route("/api/delete_manga", methods=["POST"])
 def api_delete_manga():
-    """Remove uma obra traduzida da biblioteca."""
+    """Remove uma obra da biblioteca — somente dentro das pastas de mangás do app."""
     data = request.get_json() or {}
     path = data.get("path", "").strip("\"'")
     if not path or not os.path.exists(path):
         return jsonify({"success": False, "error": "Caminho não encontrado"}), 404
+    if not mobile_security.is_within(path, mobile_security.allowed_roots(include_raw=True)):
+        return jsonify({"success": False, "error": "Exclusão bloqueada: caminho fora das pastas de mangás."}), 403
 
     try:
         if os.path.isdir(path):

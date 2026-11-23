@@ -25,6 +25,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var loadingLayout: LinearLayout
 
     private val SERVER_URL = "http://127.0.0.1:5000"
+    /** Primeira carga leva o token; o servidor grava um cookie e as próximas requisições já vão autenticadas. */
+    private val startUrl get() = "$SERVER_URL/?token=${MangaServerService.sessionToken}"
     private var fileChooserCallback: ValueCallback<Array<Uri>>? = null
     private val mainHandler = Handler(Looper.getMainLooper())
 
@@ -92,9 +94,13 @@ class MainActivity : AppCompatActivity() {
             override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
                 super.onReceivedError(view, request, error)
                 if (request?.isForMainFrame == true) {
-                    mainHandler.postDelayed({ webView.loadUrl(SERVER_URL) }, 1500)
+                    mainHandler.postDelayed({ webView.loadUrl(startUrl) }, 1500)
                 }
             }
+        }
+
+        webView.setDownloadListener { url, _, contentDisposition, mimeType, _ ->
+            DownloadHelper.download(this, url, contentDisposition, mimeType)
         }
 
         webView.webChromeClient = object : WebChromeClient() {
@@ -149,10 +155,10 @@ class MainActivity : AppCompatActivity() {
 
             mainHandler.post {
                 if (ready) {
-                    webView.loadUrl(SERVER_URL)
+                    webView.loadUrl(startUrl)
                 } else {
                     Toast.makeText(this, "Aguardando inicialização do motor...", Toast.LENGTH_SHORT).show()
-                    webView.loadUrl(SERVER_URL)
+                    webView.loadUrl(startUrl)
                 }
             }
         }.start()

@@ -6,7 +6,6 @@ Regra de Ouro: Coeso, desacoplado e estritamente < 300 linhas.
 
 import os
 import threading
-import time
 import requests
 from flask import Blueprint, jsonify, request
 
@@ -108,10 +107,9 @@ def api_start():
                 eff_st = "running" if status == "translating" else status
                 set_job_progress(status=eff_st, stage="translate", current=cur, total=tot, msg=msg, log=msg, result=result)
 
-            out_folder = mobile_translator.translate_manga_folder(target_dir, progress_cb=cb)
-            clean_out = out_folder.rstrip("/\\")
-            cbz_p = clean_out + ".cbz"
-            set_job_progress(status="done", stage="done", current=1, total=1, msg="Concluído com sucesso!", log="Processo finalizado!", result={"output": out_folder, "cbz": cbz_p})
+            summary = mobile_translator.translate_manga_folder(target_dir, progress_cb=cb)
+            final_msg = mobile_translator.summary_message(summary)
+            set_job_progress(status="done", stage="done", current=1, total=1, msg=final_msg, log=final_msg, result=summary)
         except mobile_job_control.JobCancelledError:
             set_job_progress(status="cancelled", stage="cancelled", msg="Tradução interrompida pelo usuário.", log="⏹️ Tradução encerrada com segurança.")
         except Exception as e:
@@ -158,23 +156,11 @@ def api_job_stop():
 
 @trans_bp.route("/api/colorize", methods=["POST"])
 def api_colorize():
-    data = request.get_json() or {}
-    path = data.get("path", "").strip("\"'")
-    if not path or not os.path.exists(path):
-        return jsonify({"error": "Caminho inválido."}), 400
-
-    with _JOB_LOCK:
-        _JOB_STATE["status"] = "running"
-        _JOB_STATE["stage"] = "colorize"
-        _JOB_STATE["message"] = "Processando colorização da obra..."
-        _JOB_STATE["logs"] = ["Iniciando colorização mobile..."]
-
-    def worker():
-        time.sleep(1.0)
-        set_job_progress(status="done", stage="done", current=1, total=1, msg="Colorização finalizada!", log="Colorização concluída com sucesso.")
-
-    threading.Thread(target=worker, daemon=True).start()
-    return jsonify({"success": True, "message": "Colorização iniciada"})
+    # A colorização ONNX existe apenas na versão PC/Colab; não simula sucesso no celular.
+    return jsonify({
+        "success": False,
+        "error": "Colorização ainda não está disponível na versão Android. Use a versão PC/Colab.",
+    }), 501
 
 
 @trans_bp.route("/api/status")
@@ -190,12 +176,12 @@ def api_config():
         cfg.update(data)
         cfg["use_local_llm"] = False
         saved = mobile_config.save_config(cfg)
-        cfg["app_version"] = "0.7.3-beta"
-        cfg["app_version_name"] = "v0.7.3 Beta"
+        cfg["app_version"] = "0.7.4-beta"
+        cfg["app_version_name"] = "v0.7.4 Beta"
         return jsonify({"success": saved, "config": cfg})
     cfg = mobile_config.load_config()
-    cfg["app_version"] = "0.7.3-beta"
-    cfg["app_version_name"] = "v0.7.3 Beta"
+    cfg["app_version"] = "0.7.4-beta"
+    cfg["app_version_name"] = "v0.7.4 Beta"
     return jsonify(cfg)
 
 

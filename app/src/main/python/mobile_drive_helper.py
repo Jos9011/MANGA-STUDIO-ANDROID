@@ -12,6 +12,7 @@ import zipfile
 from PIL import Image
 
 import mobile_config
+from mobile_archive import extract_manga_archive  # noqa: F401 (reexportado)
 
 MANGA_PATH_CACHE = {}
 
@@ -75,36 +76,6 @@ def is_drive_path(p):
 def natural_sort_key(s):
     """Ordenação natural de nomes de arquivos com números (ex: 1, 2, 10)."""
     return [int(t) if t.isdigit() else t.lower() for t in re.split(r"(\d+)", s)]
-
-
-def extract_manga_archive(archive_path, target_dir=None):
-    """Extrai arquivo ZIP ou CBZ para uma pasta temporária organizada."""
-    if not os.path.exists(archive_path):
-        return None
-
-    clean_name = os.path.splitext(os.path.basename(archive_path))[0]
-    clean_name = re.sub(r'[\\/*?:"<>|]', "", clean_name).strip() or "Manga_Extracted"
-
-    if not target_dir:
-        base_up = os.path.join(mobile_config.get_base_dir(), "extracted")
-        target_dir = os.path.join(base_up, clean_name)
-
-    os.makedirs(target_dir, exist_ok=True)
-    img_exts = (".jpg", ".jpeg", ".png", ".webp", ".bmp")
-    with zipfile.ZipFile(archive_path, "r") as z:
-        for member in z.infolist():
-            if member.is_dir():
-                continue
-            fname = os.path.basename(member.filename)
-            if not fname or fname.startswith(".") or fname.startswith("__MACOSX"):
-                continue
-            if any(fname.lower().endswith(ext) for ext in img_exts):
-                dest_file = os.path.join(target_dir, fname)
-                with z.open(member) as source, open(dest_file, "wb") as target:
-                    target.write(source.read())
-
-    extracted_imgs = [f for f in os.listdir(target_dir) if any(f.lower().endswith(ext) for ext in img_exts)]
-    return target_dir if extracted_imgs else None
 
 
 def extract_all_drive_archives():

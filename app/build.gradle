@@ -12,8 +12,8 @@ android {
         applicationId "com.mangastudio.mobile"
         minSdk 26
         targetSdk 34
-        versionCode 10
-        versionName "1.0.9-mobile"
+        versionCode 11
+        versionName "1.0.10-mobile"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
@@ -31,9 +31,31 @@ android {
         }
     }
 
+    // Assinatura FIXA (keystore nos Secrets do GitHub). Sem ela, cada build do CI gera uma chave
+    // de debug nova e o Android recusa instalar por cima ("App não instalado").
+    def ciKeystore = System.getenv("ANDROID_KEYSTORE_PATH")
+    signingConfigs {
+        stable {
+            if (ciKeystore) {
+                storeFile file(ciKeystore)
+                storePassword System.getenv("ANDROID_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("ANDROID_KEY_ALIAS")
+                keyPassword System.getenv("ANDROID_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
+        debug {
+            if (ciKeystore) {
+                signingConfig signingConfigs.stable
+            }
+        }
         release {
             minifyEnabled false
+            if (ciKeystore) {
+                signingConfig signingConfigs.stable
+            }
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
