@@ -20,7 +20,9 @@ Para rodar suavemente em qualquer smartphone moderno sem drenar bateria e sem so
    - Antes de cada capítulo, a ficha da obra (nomes em PT-BR e gênero dos personagens) vai junto para a IA Vision, para nomes e gêneros ficarem iguais em todos os capítulos.
    - No fim do capítulo, o Líder lê as falas originais e acrescenta à ficha os personagens e termos novos. A ficha fica em `.fichas_obra/<nome da obra>.json` na pasta que contém os capítulos (mesmo formato do PC/Colab).
    - Desligar: `"ficha_obra": false` nas configurações (ou só o Líder: `"lider_capitulo": false`).
-4. **Leitor Integrado & Exportação em .CBZ:**
+4. **Busca na Biblioteca (v1.0.13):**
+   - Campo fixo no topo da aba Biblioteca: procura nas obras traduzidas e nas originais, ignorando maiúsculas, acentos e pontuação, com as palavras em qualquer ordem ("gal kuro", "toshiue ch1"). Mostra quantas obras foram encontradas e tem ✕ para limpar.
+5. **Leitor Integrado & Exportação em .CBZ:**
    - Cria automaticamente um pacote `.cbz` e um leitor HTML offline na pasta `MANGAS [PT-BR]` para visualização direta no Tachiyomi, Mihon ou pelo próprio aplicativo.
 
 ---

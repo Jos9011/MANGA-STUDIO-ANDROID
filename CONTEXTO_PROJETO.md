@@ -7,7 +7,7 @@
 ## 1. Identificação Geral do Projeto
 
 * **Nome do Sistema:** **Manga Studio (PT-BR)**
-* **Versão Oficial Atual:** **`v0.7.8 Beta` (`0.7.8-beta`)** / APK Android: **`v1.0.12-mobile` (versionCode 13)**
+* **Versão Oficial Atual:** **`v0.7.9 Beta` (`0.7.9-beta`)** / APK Android: **`v1.0.13-mobile` (versionCode 14)**
 * **Autor / Proprietário:** **Jos9011**
 * **Objetivo:** Plataforma completa de scanlation automatizado de alta fidelidade para mangás (japonês), manhwas (coreano), manhuas (chinês) e quadrinhos em inglês/espanhol com destino em **Português do Brasil (PT-BR)**.
 * **Repositórios Oficiais no GitHub:**
@@ -106,5 +106,5 @@ O sistema é dividido em submódulos cooperativos:
   * Abrir o notebook `Colab_Manga_WebUI.ipynb` no Google Colab, selecionar GPU e executar as células.
   * O servidor sobe via Cloudflare Tunnel com token secreto criptográfico: `https://xxxx.trycloudflare.com/?token=SEU_TOKEN`.
 * **No Celular Android:**
-  * Instalar o APK gerado no GitHub Actions (`MANGA-STUDIO-ANDROID/releases/download/v1.0.12-mobile/app-debug.apk`).
+  * Instalar o APK gerado no GitHub Actions (`MANGA-STUDIO-ANDROID/releases/download/v1.0.13-mobile/app-debug.apk`).
   * O app roda um servidor Flask em segundo plano via Chaquopy na porta interna `8080` e abre a WebView nativa.
