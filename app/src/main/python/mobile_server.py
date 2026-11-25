@@ -9,6 +9,7 @@ from flask import Flask, jsonify, render_template, send_from_directory
 
 import mobile_security
 from mobile_routes_export import export_bp
+from mobile_routes_gdrive import gdrive_bp
 from mobile_routes_library import library_bp
 from mobile_routes_translation import trans_bp
 
@@ -41,6 +42,7 @@ def inject_version():
 app.register_blueprint(library_bp)
 app.register_blueprint(trans_bp)
 app.register_blueprint(export_bp)
+app.register_blueprint(gdrive_bp)
 
 
 @app.route("/")

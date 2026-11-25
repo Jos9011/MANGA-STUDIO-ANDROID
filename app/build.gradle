@@ -12,8 +12,8 @@ android {
         applicationId "com.mangastudio.mobile"
         minSdk 26
         targetSdk 34
-        versionCode 14
-        versionName "1.0.13-mobile"
+        versionCode 15
+        versionName "1.0.14-mobile"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
@@ -74,4 +74,6 @@ dependencies {
     implementation 'com.google.android.material:material:1.11.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
+    // Login do Google para ler o Google Drive (AuthorizationClient)
+    implementation 'com.google.android.gms:play-services-auth:21.2.0'
 }

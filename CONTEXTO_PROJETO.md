@@ -7,7 +7,7 @@
 ## 1. Identificação Geral do Projeto
 
 * **Nome do Sistema:** **Manga Studio (PT-BR)**
-* **Versão Oficial Atual:** **`v0.7.9 Beta` (`0.7.9-beta`)** / APK Android: **`v1.0.13-mobile` (versionCode 14)**
+* **Versão Oficial Atual:** **`v0.7.9 Beta` (`0.7.9-beta`)** / APK Android: **`v1.0.14-mobile` (versionCode 15)**
 * **Autor / Proprietário:** **Jos9011**
 * **Objetivo:** Plataforma completa de scanlation automatizado de alta fidelidade para mangás (japonês), manhwas (coreano), manhuas (chinês) e quadrinhos em inglês/espanhol com destino em **Português do Brasil (PT-BR)**.
 * **Repositórios Oficiais no GitHub:**
@@ -55,6 +55,12 @@ O sistema é dividido em submódulos cooperativos:
 * **Android (v1.0.12):** como a IA Vision lê e traduz cada página numa chamada só, `mobile_ficha.py` anexa a ficha ao prompt da IA Vision, recebe o texto `original` de cada balão e roda o Líder no fim do capítulo, atualizando a ficha para os próximos.
 * `ficha_obra.py`, `ficha_caminho.py` e `lider_capitulo.py` são **cópias idênticas** nos dois repositórios: altere nos dois juntos (teste `TestSharedModulesInSync` compara quando `MANGA_PC_REPO` aponta para o repositório do PC).
 * Ficha em `.fichas_obra/<obra>.json` na pasta que contém os capítulos soltos ("Obra Ch.1", "Obra Ch.2").
+
+### A3. Google Drive dentro do app (Android v1.0.14)
+* Login do Google no Android (`DriveAuthHelper.kt`, Google Identity Services, `play-services-auth`), escopo **somente leitura** (`drive.readonly`). O token vai do Kotlin direto para o Python (`mobile_gdrive.set_token`), fica só na memória e nunca passa pelo JavaScript.
+* `mobile_gdrive.py` + `mobile_routes_gdrive.py` (`/api/gdrive/*`): lista pastas e `.zip/.cbz` da pasta `MANGAS` do Drive (configurável em `"gdrive_root_folder"`) e baixa a obra escolhida para `/sdcard/MANGAS` em segundo plano.
+* Requisitos fora do código: chave FIXA de assinatura nos Secrets do GitHub (`ANDROID_KEYSTORE_*`) e um cliente OAuth "Android" no Google Cloud com o pacote `com.mangastudio.mobile` + SHA-1 dessa chave (API Google Drive ativada; tela de consentimento em modo Teste com o e-mail do usuário).
+* Próxima etapa planejada: enviar as traduções de volta para `MANGAS [PT-BR]` no Drive.
 
 ### B. OCR IA Vision Híbrido
 * Combina um **detector geométrico local (RapidOCR / PP-OCR)** para traçar as caixas com uma **IA Vision Multimodal** para transcrever o texto original direto da imagem (reconhecendo fontes estilizadas e onomatopeias).
@@ -106,5 +112,5 @@ O sistema é dividido em submódulos cooperativos:
   * Abrir o notebook `Colab_Manga_WebUI.ipynb` no Google Colab, selecionar GPU e executar as células.
   * O servidor sobe via Cloudflare Tunnel com token secreto criptográfico: `https://xxxx.trycloudflare.com/?token=SEU_TOKEN`.
 * **No Celular Android:**
-  * Instalar o APK gerado no GitHub Actions (`MANGA-STUDIO-ANDROID/releases/download/v1.0.13-mobile/app-debug.apk`).
+  * Instalar o APK gerado no GitHub Actions (`MANGA-STUDIO-ANDROID/releases/download/v1.0.14-mobile/app-debug.apk`).
   * O app roda um servidor Flask em segundo plano via Chaquopy na porta interna `8080` e abre a WebView nativa.
