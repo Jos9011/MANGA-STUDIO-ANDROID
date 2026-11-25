@@ -58,12 +58,12 @@ jobs:
       - name: 📦 Preparar APK Final
         run: |
           mkdir -p build/outputs/apk/
-          cp app/build/outputs/apk/debug/app-debug.apk build/outputs/apk/MangaStudio-Mobile-v1.0.13.apk || true
+          cp app/build/outputs/apk/debug/app-debug.apk build/outputs/apk/MangaStudio-Mobile-v1.0.14.apk || true
 
       - name: 📤 Publicar APK como Artefato para Download
         uses: actions/upload-artifact@v4
         with:
-          name: MangaStudio-Mobile-v1.0.13-APK
+          name: MangaStudio-Mobile-v1.0.14-APK
           path: app/build/outputs/apk/debug/*.apk
           retention-days: 30
 
@@ -71,10 +71,16 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: v1.0.13-mobile
-          name: "Manga Studio Mobile v1.0.13 APK (v0.7.9 Beta — Busca na Biblioteca)"
+          tag_name: v1.0.14-mobile
+          name: "Manga Studio Mobile v1.0.14 APK (v0.7.9 Beta — Google Drive na Biblioteca)"
           body: |
-            ## 📱 Manga Studio Mobile v1.0.13 — Sistema Oficial v0.7.9 Beta
+            ## 📱 Manga Studio Mobile v1.0.14 — Sistema Oficial v0.7.9 Beta
+
+            ### ☁️ Google Drive dentro do app
+            - Na aba Biblioteca, toque em **Conectar Google Drive** e entre com a sua conta Google (permissão somente de leitura).
+            - O app lista as pastas e os arquivos `.zip`/`.cbz` da pasta **MANGAS** do seu Drive, com a mesma busca da Biblioteca.
+            - **⬇️ Baixar** copia a obra para o celular (`/sdcard/MANGAS`); depois é só tocar em **⚡ Traduzir**.
+            - Para o login funcionar, o APK precisa ser assinado com a chave fixa cadastrada no Google Cloud.
 
             ### 🔎 Busca na Biblioteca
             - Campo de busca fixo no topo da aba Biblioteca, que procura nas obras traduzidas e nas originais.

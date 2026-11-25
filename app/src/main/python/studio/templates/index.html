@@ -2183,6 +2183,16 @@
           <!-- Preenchido via API -->
         </div>
 
+        <!-- Google Drive (só no app Android: depende de window.MangaDrive) -->
+        <div id="gdrive-section" style="display: none; margin-top: 40px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 10px;">
+            <h3 style="font-size: 1.25rem; font-weight: 800; margin: 0;">☁️ Google Drive — <span id="gdrive-root-name">MANGAS</span></h3>
+            <button class="btn-secondary" id="gdrive-connect-btn" type="button" onclick="connectGoogleDrive()">Conectar Google Drive</button>
+          </div>
+          <div class="library-search-info" id="gdrive-msg" style="margin-bottom: 14px;"></div>
+          <div class="manga-grid" id="gdrive-grid"></div>
+        </div>
+
         <div style="display: flex; justify-content: space-between; align-items: center; margin: 40px 0 16px 0; flex-wrap: wrap; gap: 10px;">
           <h3 style="font-size: 1.25rem; font-weight: 800; margin: 0;">Obras Originais (Prontas para Traduzir)</h3>
           <button class="btn-secondary" id="btn-extract-all-archives" onclick="extractAllArchives()" style="font-size: 0.82rem; padding: 6px 14px; border-color: rgba(66, 133, 244, 0.4); color: #8ab4f8; display: inline-flex; align-items: center; gap: 6px;" title="Extrai todos os arquivos .pdf, .zip e .cbz encontrados na sua pasta MANGAS">
@@ -3579,6 +3589,7 @@
         libraryData = await res.json();
         renderLibraryGrid();
         renderSidebarRecents();
+        initGoogleDriveSection();
       } catch (e) {
         console.error("Erro ao carregar biblioteca:", e);
       }
@@ -3666,6 +3677,149 @@
       }
       const clearBtn = document.getElementById('library-search-clear');
       if (clearBtn) clearBtn.classList.toggle('visible', !!q);
+      if (gdriveLoaded) renderGoogleDriveGrid();
+    }
+
+    // ===== Google Drive no app Android (login via window.MangaDrive, dados via /api/gdrive/*) =====
+    let gdriveItems = [];
+    let gdriveLoaded = false;
+    let gdriveInitDone = false;
+    let gdrivePollTimer = null;
+    let gdriveNotice = '';  // aviso do último download; tem prioridade sobre o contador por alguns segundos
+    let gdriveNoticeTimer = null;
+
+    function showGdriveNotice(text) {
+      gdriveNotice = text;
+      setGdriveMsg(text);
+      clearTimeout(gdriveNoticeTimer);
+      gdriveNoticeTimer = setTimeout(() => { gdriveNotice = ''; if (gdriveLoaded) renderGoogleDriveGrid(); }, 8000);
+    }
+
+    function gdriveAvailable() {
+      try { return !!(window.MangaDrive && window.MangaDrive.isAvailable()); } catch (e) { return false; }
+    }
+
+    function setGdriveMsg(text) {
+      const el = document.getElementById('gdrive-msg');
+      if (el) el.textContent = text || '';
+    }
+
+    async function initGoogleDriveSection() {
+      if (gdriveInitDone) return;
+      gdriveInitDone = true;
+      const sec = document.getElementById('gdrive-section');
+      if (!sec || !gdriveAvailable()) return;
+      sec.style.display = 'block';
+      try {
+        const st = await (await fetch('/api/gdrive/status')).json();
+        if (st.root) document.getElementById('gdrive-root-name').textContent = st.root;
+        if (st.connected) return loadGoogleDrive();
+      } catch (e) { /* segue para a mensagem abaixo */ }
+      setGdriveMsg('Toque em "Conectar Google Drive" para ver aqui as obras da sua pasta do Drive.');
+    }
+
+    function connectGoogleDrive() {
+      if (!gdriveAvailable()) return;
+      setGdriveMsg('Abrindo o login do Google...');
+      window.MangaDrive.connect();
+    }
+
+    window.onDriveAuthResult = function (ok, message) {
+      if (ok) {
+        setGdriveMsg('Carregando obras do Google Drive...');
+        loadGoogleDrive();
+      } else {
+        setGdriveMsg('⚠️ ' + (message || 'Não foi possível conectar ao Google Drive.'));
+      }
+    };
+
+    async function loadGoogleDrive() {
+      const btn = document.getElementById('gdrive-connect-btn');
+      try {
+        const res = await fetch('/api/gdrive/list');
+        const data = await res.json();
+        if (res.status === 401) {
+          gdriveLoaded = false;
+          if (btn) btn.textContent = 'Conectar Google Drive';
+          setGdriveMsg('A conexão com o Google Drive expirou. Toque em "Conectar Google Drive".');
+          return;
+        }
+        if (!res.ok) {
+          setGdriveMsg('⚠️ ' + (data.message || 'Erro ao listar o Google Drive.'));
+          return;
+        }
+        gdriveItems = data.items || [];
+        gdriveLoaded = true;
+        if (btn) btn.textContent = '↻ Recarregar Drive';
+        renderGoogleDriveGrid();
+      } catch (e) {
+        setGdriveMsg('⚠️ Erro ao listar o Google Drive: ' + e);
+      }
+    }
+
+    function formatDriveSize(bytes) {
+      if (!bytes) return '';
+      return bytes >= 1048576 ? (bytes / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(bytes / 1024)) + ' KB';
+    }
+
+    function renderGoogleDriveGrid() {
+      const grid = document.getElementById('gdrive-grid');
+      if (!grid) return;
+      const q = (document.getElementById('library-search')?.value || '').trim();
+      const items = gdriveItems.filter(it => mangaMatchesSearch(it.name, q));
+      grid.innerHTML = items.map(it => {
+        const id = escapeHtml(it.id);
+        const icon = it.kind === 'folder' ? '📁' : '📦';
+        const sub = it.kind === 'folder' ? 'Pasta de imagens' : ('Arquivo ' + formatDriveSize(it.size));
+        const action = it.local_path
+          ? `<button class="card-action-btn primary" onclick="event.stopPropagation(); inspectFolder('${escapeQuotes(it.local_path)}'); switchTab('translate');">⚡ Traduzir</button>`
+          : `<button class="card-action-btn primary" onclick="event.stopPropagation(); downloadFromDrive('${escapeQuotes(it.id)}');">⬇️ Baixar</button>`;
+        return `
+        <div class="manga-card">
+          <div class="card-thumb" style="display: flex; align-items: center; justify-content: center; font-size: 3.2rem;">${icon}</div>
+          <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px;">
+            <span class="badge-drive">☁️ Google Drive</span>
+            ${it.local_path ? '<span class="badge-drive" style="background: rgba(30, 215, 96, 0.18); color: #1ed760; border-color: rgba(30, 215, 96, 0.4);">✅ No celular</span>' : ''}
+          </div>
+          <div class="card-title" title="${escapeHtml(it.name)}">${escapeHtml(it.name)}</div>
+          <div class="card-subtitle" id="gdl-${id}">${escapeHtml(sub)}</div>
+          <div class="card-actions-row"><div class="card-actions-subrow">${action}</div></div>
+        </div>`;
+      }).join('') || `<div class="library-empty">${q ? `Nenhuma obra do Drive encontrada para "${escapeHtml(q)}".` : 'Nenhuma pasta ou arquivo ZIP/CBZ na pasta do Drive.'}</div>`;
+      setGdriveMsg(gdriveNotice || (q ? `Encontrados: ${items.length} de ${gdriveItems.length} no Google Drive`
+                     : `${gdriveItems.length} obra(s) no Google Drive. "Baixar" copia a obra para o celular.`));
+    }
+
+    async function downloadFromDrive(id) {
+      const it = gdriveItems.find(x => x.id === id);
+      if (!it) return;
+      const res = await fetch('/api/gdrive/download', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: it.id, name: it.name, kind: it.kind })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 401) { setGdriveMsg('A conexão expirou. Conectando de novo...'); return connectGoogleDrive(); }
+      if (!res.ok) { setGdriveMsg('⚠️ ' + (data.message || 'Não foi possível iniciar o download.')); return; }
+      setGdriveMsg('Baixando "' + it.name + '"...');
+      clearInterval(gdrivePollTimer);
+      gdrivePollTimer = setInterval(async () => {
+        const st = await (await fetch('/api/gdrive/download_status')).json().catch(() => ({}));
+        const label = document.getElementById('gdl-' + it.id);
+        if (st.state === 'running') {
+          if (label) label.textContent = st.total ? `Baixando ${st.done}/${st.total}...` : 'Baixando...';
+          return;
+        }
+        clearInterval(gdrivePollTimer);
+        if (st.state === 'done') {
+          it.local_path = st.path;
+          showGdriveNotice('✅ "' + it.name + '" baixada para o celular. Toque em "⚡ Traduzir".');
+          renderGoogleDriveGrid();
+          loadLibrary();
+        } else if (st.state === 'error') {
+          showGdriveNotice('⚠️ Falha ao baixar "' + it.name + '": ' + (st.error || 'erro desconhecido'));
+          if (label) label.textContent = 'Falha no download';
+        }
+      }, 1000);
     }
 
     // Busca de mangás: ignora maiúsculas, acentos e pontuação; aceita palavras em qualquer ordem

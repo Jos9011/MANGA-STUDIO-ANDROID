@@ -14,6 +14,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import java.net.HttpURLConnection
 import java.net.URL
+import org.json.JSONObject
 
 /**
  * MainActivity - Janela principal do app mobile com WebView, upload de arquivos e carregamento rápido.
@@ -29,6 +30,17 @@ class MainActivity : AppCompatActivity() {
     private val startUrl get() = "$SERVER_URL/?token=${MangaServerService.sessionToken}"
     private var fileChooserCallback: ValueCallback<Array<Uri>>? = null
     private val mainHandler = Handler(Looper.getMainLooper())
+
+    /** Login do Google Drive: o resultado volta para a página em window.onDriveAuthResult(ok, msg). */
+    private val driveAuth = DriveAuthHelper(this) { ok, message ->
+        mainHandler.post {
+            if (::webView.isInitialized) {
+                webView.evaluateJavascript(
+                    "window.onDriveAuthResult && window.onDriveAuthResult($ok, ${JSONObject.quote(message)})", null
+                )
+            }
+        }
+    }
 
     private val filePickerLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -83,6 +95,8 @@ class MainActivity : AppCompatActivity() {
             displayZoomControls = false
             mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
         }
+
+        webView.addJavascriptInterface(DriveBridge(this, driveAuth), "MangaDrive")
 
         webView.webViewClient = object : WebViewClient() {
             override fun onPageFinished(view: WebView?, url: String?) {

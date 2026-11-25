@@ -22,7 +22,11 @@ Para rodar suavemente em qualquer smartphone moderno sem drenar bateria e sem so
    - Desligar: `"ficha_obra": false` nas configurações (ou só o Líder: `"lider_capitulo": false`).
 4. **Busca na Biblioteca (v1.0.13):**
    - Campo fixo no topo da aba Biblioteca: procura nas obras traduzidas e nas originais, ignorando maiúsculas, acentos e pontuação, com as palavras em qualquer ordem ("gal kuro", "toshiue ch1"). Mostra quantas obras foram encontradas e tem ✕ para limpar.
-5. **Leitor Integrado & Exportação em .CBZ:**
+5. **Google Drive dentro do app (v1.0.14):**
+   - Na Biblioteca, "Conectar Google Drive" faz login com a sua conta Google (permissão só de leitura) e lista a pasta `MANGAS` do seu Drive.
+   - "⬇️ Baixar" copia a obra (pasta de imagens ou `.zip/.cbz`) para `/sdcard/MANGAS`, pronta para traduzir.
+   - Exige a chave fixa do APK e um cliente OAuth Android no Google Cloud (veja `CONTEXTO_PROJETO.md`).
+6. **Leitor Integrado & Exportação em .CBZ:**
    - Cria automaticamente um pacote `.cbz` e um leitor HTML offline na pasta `MANGAS [PT-BR]` para visualização direta no Tachiyomi, Mihon ou pelo próprio aplicativo.
 
 ---

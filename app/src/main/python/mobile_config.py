@@ -56,6 +56,7 @@ def get_default_config():
         "output_dir": "/sdcard/MANGAS [PT-BR]",
         "raw_mangas_dir": "/sdcard/MANGAS",
         "translated_mangas_dir": "/sdcard/MANGAS [PT-BR]",
+        "gdrive_root_folder": "MANGAS",
         "use_local_llm": False,  # Regra Mobile: Proibido Ollama pesado no celular
         "max_image_dim": 1400,
         "preserve_lineart": True,
