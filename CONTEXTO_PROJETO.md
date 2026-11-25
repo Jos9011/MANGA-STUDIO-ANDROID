@@ -7,7 +7,7 @@
 ## 1. Identificação Geral do Projeto
 
 * **Nome do Sistema:** **Manga Studio (PT-BR)**
-* **Versão Oficial Atual:** **`v0.7.5 Beta` (`0.7.5-beta`)** / APK Android: **`v1.0.11-mobile` (versionCode 12)**
+* **Versão Oficial Atual:** **`v0.7.8 Beta` (`0.7.8-beta`)** / APK Android: **`v1.0.12-mobile` (versionCode 13)**
 * **Autor / Proprietário:** **Jos9011**
 * **Objetivo:** Plataforma completa de scanlation automatizado de alta fidelidade para mangás (japonês), manhwas (coreano), manhuas (chinês) e quadrinhos em inglês/espanhol com destino em **Português do Brasil (PT-BR)**.
 * **Repositórios Oficiais no GitHub:**
@@ -49,6 +49,12 @@ O sistema é dividido em submódulos cooperativos:
   * Recebe o dossiê da página inteira de uma vez.
   * Compreende gênero dos personagens, duplo sentido, tom emocional e gírias de scanlation em PT-BR sem censura (+18).
   * Gera a tradução de todas as falas em bloco com coerência de cena.
+
+### A2. Ficha da Obra + Líder do Capítulo (Fase 1)
+* **PC/Colab:** o Líder roda depois do OCR e antes da tradução (`lider_capitulo.py`, `ficha_obra.py`, `ficha_caminho.py`).
+* **Android (v1.0.12):** como a IA Vision lê e traduz cada página numa chamada só, `mobile_ficha.py` anexa a ficha ao prompt da IA Vision, recebe o texto `original` de cada balão e roda o Líder no fim do capítulo, atualizando a ficha para os próximos.
+* `ficha_obra.py`, `ficha_caminho.py` e `lider_capitulo.py` são **cópias idênticas** nos dois repositórios: altere nos dois juntos (teste `TestSharedModulesInSync` compara quando `MANGA_PC_REPO` aponta para o repositório do PC).
+* Ficha em `.fichas_obra/<obra>.json` na pasta que contém os capítulos soltos ("Obra Ch.1", "Obra Ch.2").
 
 ### B. OCR IA Vision Híbrido
 * Combina um **detector geométrico local (RapidOCR / PP-OCR)** para traçar as caixas com uma **IA Vision Multimodal** para transcrever o texto original direto da imagem (reconhecendo fontes estilizadas e onomatopeias).
@@ -100,5 +106,5 @@ O sistema é dividido em submódulos cooperativos:
   * Abrir o notebook `Colab_Manga_WebUI.ipynb` no Google Colab, selecionar GPU e executar as células.
   * O servidor sobe via Cloudflare Tunnel com token secreto criptográfico: `https://xxxx.trycloudflare.com/?token=SEU_TOKEN`.
 * **No Celular Android:**
-  * Instalar o APK gerado no GitHub Actions (`MANGA-STUDIO-ANDROID/releases/download/v1.0.11-mobile/app-debug.apk`).
+  * Instalar o APK gerado no GitHub Actions (`MANGA-STUDIO-ANDROID/releases/download/v1.0.12-mobile/app-debug.apk`).
   * O app roda um servidor Flask em segundo plano via Chaquopy na porta interna `8080` e abre a WebView nativa.

@@ -58,12 +58,12 @@ jobs:
       - name: 📦 Preparar APK Final
         run: |
           mkdir -p build/outputs/apk/
-          cp app/build/outputs/apk/debug/app-debug.apk build/outputs/apk/MangaStudio-Mobile-v1.0.11.apk || true
+          cp app/build/outputs/apk/debug/app-debug.apk build/outputs/apk/MangaStudio-Mobile-v1.0.12.apk || true
 
       - name: 📤 Publicar APK como Artefato para Download
         uses: actions/upload-artifact@v4
         with:
-          name: MangaStudio-Mobile-v1.0.11-APK
+          name: MangaStudio-Mobile-v1.0.12-APK
           path: app/build/outputs/apk/debug/*.apk
           retention-days: 30
 
@@ -71,19 +71,22 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: v1.0.11-mobile
-          name: "Manga Studio Mobile v1.0.11 APK (v0.7.5 Beta — Páginas WebP/AVIF e correções críticas)"
+          tag_name: v1.0.12-mobile
+          name: "Manga Studio Mobile v1.0.12 APK (v0.7.8 Beta — Ficha da Obra e anti-inglês residual)"
           body: |
-            ## 📱 Manga Studio Mobile v1.0.11 — Sistema Oficial v0.7.5 Beta
+            ## 📱 Manga Studio Mobile v1.0.12 — Sistema Oficial v0.7.8 Beta
 
-            ### 🖼️ Correção: "cannot identify image file"
-            - Páginas que o Pillow do APK não lê (WebP, AVIF, HEIC) agora são abertas pelo decodificador nativo do Android.
-            - Se uma página realmente estiver corrompida, o log mostra o formato real do arquivo (ex.: "arquivo vazio", "HTML/texto").
+            ### 📒 Ficha da Obra + Líder do capítulo (novo no celular)
+            - Antes de cada capítulo, o app carrega a ficha da obra (nomes em PT-BR e gênero dos personagens) e manda junto para a IA Vision, para os nomes e gêneros ficarem iguais em todos os capítulos.
+            - No fim do capítulo, o Líder (`openai/gpt-oss-120b` no Groq, ou Gemini/OpenRouter) lê as falas originais e acrescenta à ficha os personagens e termos novos. Apelidos vão na nota do personagem; palpites ("possível...") são descartados.
+            - Mesmo formato e mesmo arquivo do PC/Colab: `.fichas_obra/<nome da obra>.json`, na pasta que contém os capítulos ("Obra Ch.1", "Obra Ch.2" usam a mesma ficha).
+            - Desligar: `"ficha_obra": false` nas configurações; só o Líder: `"lider_capitulo": false`.
 
-            ### 🛠️ Inclui as correções da v1.0.10
-            - Falhas por página visíveis no log e resumo final honesto.
-            - Fallback entre provedores e limite de tokens 4096.
-            - Servidor local protegido por token; ordem natural das páginas; ZIP multi-capítulo; downloads de CBZ/ZIP.
+            ### 🇺🇸 Sem inglês residual
+            - A IA Vision é instruída a traduzir todas as palavras, inclusive as em negrito, e a ignorar efeitos sonoros desenhados e créditos de scan.
+
+            ### 🛠️ Inclui as correções da v1.0.11
+            - Páginas WebP/AVIF/HEIC abertas pelo decodificador nativo do Android; falhas por página visíveis no log; fallback entre provedores.
 
             ### 📥 Como instalar:
             1. Baixe o arquivo `app-debug.apk` abaixo no seu celular.

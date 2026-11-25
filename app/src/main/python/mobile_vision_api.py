@@ -13,9 +13,12 @@ PROMPT = (
     "Analise a página e detecte todos os balões de fala legíveis (japonês, chinês, coreano ou inglês). "
     "Agrupe todas as linhas de um mesmo balão em UM único item. Em falas divididas em múltiplos balões contíguos, preserve o sentido contínuo. "
     "Traduza sempre o pronome inglês 'I' (sozinho ou na frase) como 'Eu' — NUNCA deixe 'I' solto em inglês. "
-    "Ignore letras soltas vazadas de scans antigos em balões asiáticos. "
+    "Traduza TODAS as palavras, inclusive as em negrito/destaque: NUNCA deixe palavras em inglês na tradução "
+    "(só nomes próprios e apelidos ficam como estão). "
+    "Ignore letras soltas vazadas de scans antigos em balões asiáticos, efeitos sonoros desenhados e créditos de scan. "
     "Retorne ESTRITAMENTE um JSON: "
-    '[{"box_2d": [ymin, xmin, ymax, xmax], "translation": "texto traduzido em PT-BR"}]. '
+    '[{"box_2d": [ymin, xmin, ymax, xmax], "original": "texto original do balão (até 80 caracteres)", '
+    '"translation": "texto traduzido em PT-BR"}]. '
     "Coordenadas normalizadas entre 0 e 1000 (0,0 = canto superior esquerdo; ordem ymin, xmin, ymax, xmax). "
     "Se não houver falas, retorne []. Apenas JSON válido."
 )
@@ -69,7 +72,7 @@ def _openai_style_content(data, provider):
     return (choice.get("message") or {}).get("content")
 
 
-def call_groq_vision(img_b64, keys, model=None):
+def call_groq_vision(img_b64, keys, model=None, prompt=None):
     """Executa detecção e tradução visual via Groq Vision com rotação de chaves."""
     model = model or "qwen/qwen3.8-27b"
     url = "https://api.groq.com/openai/v1/chat/completions"
@@ -78,7 +81,7 @@ def call_groq_vision(img_b64, keys, model=None):
         payload = {
             "model": model,
             "messages": [{"role": "user", "content": [
-                {"type": "text", "text": PROMPT},
+                {"type": "text", "text": prompt or PROMPT},
                 {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img_b64}"}},
             ]}],
             "temperature": 0.1,
@@ -97,7 +100,7 @@ def call_groq_vision(img_b64, keys, model=None):
     raise RuntimeError(f"Falha em todas as chaves Groq ({model}): {last_err}")
 
 
-def call_gemini_vision(img_b64, keys, model=None):
+def call_gemini_vision(img_b64, keys, model=None, prompt=None):
     """Executa detecção e tradução visual via Google Gemini Vision."""
     model = model or "gemini-3.1-flash-lite"
     last_err = None
@@ -105,7 +108,7 @@ def call_gemini_vision(img_b64, keys, model=None):
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
         payload = {
             "contents": [{"parts": [
-                {"text": PROMPT},
+                {"text": prompt or PROMPT},
                 {"inline_data": {"mime_type": "image/jpeg", "data": img_b64}},
             ]}],
             "generationConfig": {
@@ -139,7 +142,7 @@ def call_gemini_vision(img_b64, keys, model=None):
     raise RuntimeError(f"Falha em todas as chaves Gemini ({model}): {last_err}")
 
 
-def call_openrouter_vision(img_b64, keys, model=None):
+def call_openrouter_vision(img_b64, keys, model=None, prompt=None):
     """Executa detecção e tradução visual via OpenRouter Vision."""
     model = model or "google/gemma-4-31b-it:free"
     url = "https://openrouter.ai/api/v1/chat/completions"
@@ -148,7 +151,7 @@ def call_openrouter_vision(img_b64, keys, model=None):
         payload = {
             "model": model,
             "messages": [{"role": "user", "content": [
-                {"type": "text", "text": PROMPT},
+                {"type": "text", "text": prompt or PROMPT},
                 {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img_b64}"}},
             ]}],
             "temperature": 0.1,
@@ -193,16 +196,22 @@ def provider_order(cfg):
     return order
 
 
-def call_vision_api(img_b64, cfg):
-    """Roteia para o provedor configurado e recua para os outros provedores com chave se ele falhar."""
+def call_vision_api(img_b64, cfg, extra_prompt=""):
+    """
+    Roteia para o provedor configurado e recua para os outros provedores com chave se ele falhar.
+    extra_prompt: texto anexado ao PROMPT (ex: Ficha da Obra com nomes e gêneros fixos).
+    """
     errors = []
     for prov in provider_order(cfg):
         keys = collect_keys(cfg, prov)
         if not keys:
             continue
         fn, vision_field, model_field = _CALLS[prov]
+        model = cfg.get(vision_field) or cfg.get(model_field)
         try:
-            return fn(img_b64, keys, cfg.get(vision_field) or cfg.get(model_field))
+            if extra_prompt:
+                return fn(img_b64, keys, model, prompt=PROMPT + "\n" + extra_prompt)
+            return fn(img_b64, keys, model)
         except Exception as e:
             errors.append(str(e))
     if not errors:
