@@ -12,6 +12,7 @@ from PIL import Image
 
 import mobile_balloon_cleaner
 import mobile_config
+import mobile_ficha
 import mobile_drive_helper
 import mobile_image_io
 import mobile_typesetter
@@ -65,11 +66,17 @@ def box_to_pixels(box, sent_w, sent_h, real_w, real_h):
     return x0, y0, x1, y1
 
 
-def process_single_page(img_path, out_path, config):
-    """Processa página: chama Vision, varre cavidades de balão e diagrama em PT-BR. Retorna nº de balões."""
+def process_single_page(img_path, out_path, config, extra_prompt="", originals=None):
+    """
+    Processa página: chama Vision, varre cavidades de balão e diagrama em PT-BR. Retorna nº de balões.
+    extra_prompt: Ficha da Obra anexada ao prompt. originals: lista que recebe os textos originais.
+    """
     img_pil = mobile_image_io.open_rgb(img_path)  # Pillow ou decodificador nativo do Android
     b64, (sent_h, sent_w) = encode_image_base64(img_pil, config.get("max_image_dim", 1400))
-    bubbles = call_vision_api(b64, config)
+    bubbles = call_vision_api(b64, config, extra_prompt=extra_prompt) if extra_prompt else call_vision_api(b64, config)
+    if originals is not None:
+        originals.extend(str(b.get("original") or "").strip() for b in bubbles
+                         if isinstance(b, dict) and str(b.get("original") or "").strip())
 
     real_w, real_h = img_pil.size
     safe_regions = []
@@ -134,17 +141,25 @@ def translate_manga_folder(input_folder, output_folder=None, progress_cb=None):
     os.makedirs(output_folder, exist_ok=True)
     total = len(pages)
     translated, errors, fallback_copies = 0, [], []
+    # Fase 1: a Ficha da Obra (nomes e gêneros fixos) vai no prompt; o Líder a atualiza no fim
+    ficha_ctx = mobile_ficha.load_chapter_ficha(input_folder, cfg)
+    ficha_prompt = mobile_ficha.prompt_block(ficha_ctx)
+    originals = []
 
     def notify(cur, msg):
         if progress_cb:
             progress_cb("translating", cur, total, msg)
+
+    if ficha_prompt:
+        n_pers = len((ficha_ctx.get("ficha") or {}).get("personagens") or [])
+        notify(0, f"📒 Ficha da obra carregada ({n_pers} personagem(ns)): nomes e gêneros vão no prompt.")
 
     try:
         for idx, (in_p, out_name) in enumerate(pages):
             out_p = os.path.join(output_folder, out_name)
             notify(idx + 1, f"Traduzindo página {idx + 1}/{total} ({out_name})...")
             try:
-                n = process_single_page(in_p, out_p, cfg)
+                n = process_single_page(in_p, out_p, cfg, extra_prompt=ficha_prompt, originals=originals)
                 translated += 1
                 if n == 0:
                     notify(idx + 1, f"ℹ️ Página {idx + 1}: nenhum balão de fala detectado.")
@@ -171,6 +186,11 @@ def translate_manga_folder(input_folder, output_folder=None, progress_cb=None):
                 pass
         last = errors[-1]["error"] if errors else "erro desconhecido"
         raise RuntimeError(f"Nenhuma página foi traduzida. Último erro: {last}")
+
+    if originals:
+        notify(total, "📒 Líder: lendo as falas do capítulo para atualizar a ficha da obra...")
+        if mobile_ficha.update_after_chapter(input_folder, originals, cfg, log=lambda m: notify(total, m)):
+            notify(total, "📒 Ficha da obra atualizada para os próximos capítulos.")
 
     cbz_path = output_folder.rstrip("/\\") + ".cbz"
     mobile_typesetter.make_cbz_package(output_folder, cbz_path)
