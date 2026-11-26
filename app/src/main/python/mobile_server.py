@@ -25,13 +25,13 @@ app = Flask(
 )
 mobile_security.install(app)
 
-APP_VERSION = "0.7.9-beta"
-APP_VERSION_NAME = "v0.7.9 Beta"
+APP_VERSION = "0.8.1-beta"
+APP_VERSION_NAME = "v0.8.1 Beta"
 
 
 @app.context_processor
 def inject_version():
-    """Injeta as variáveis oficiais da versão v0.7.9 Beta em todos os templates Jinja."""
+    """Injeta as variáveis oficiais da versão v0.8.1 Beta em todos os templates Jinja."""
     return {
         "app_version": APP_VERSION_NAME,
         "app_version_code": APP_VERSION,

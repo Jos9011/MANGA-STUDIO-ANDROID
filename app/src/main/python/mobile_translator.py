@@ -10,12 +10,14 @@ import io
 import os
 from PIL import Image
 
+import chapter_context
 import mobile_balloon_cleaner
 import mobile_config
 import mobile_ficha
 import mobile_drive_helper
 import mobile_image_io
 import mobile_typesetter
+import quota_wait
 from mobile_vision_api import PROMPT, call_vision_api, extract_json_bubbles, collect_keys  # noqa: F401
 
 IMG_EXTS = (".jpg", ".jpeg", ".png", ".webp", ".avif", ".bmp")
@@ -66,10 +68,11 @@ def box_to_pixels(box, sent_w, sent_h, real_w, real_h):
     return x0, y0, x1, y1
 
 
-def process_single_page(img_path, out_path, config, extra_prompt="", originals=None):
+def process_single_page(img_path, out_path, config, extra_prompt="", originals=None, pairs=None):
     """
     Processa página: chama Vision, varre cavidades de balão e diagrama em PT-BR. Retorna nº de balões.
-    extra_prompt: Ficha da Obra anexada ao prompt. originals: lista que recebe os textos originais.
+    extra_prompt: Ficha da Obra + contexto anexados ao prompt. originals: recebe os textos originais.
+    pairs: recebe (original, tradução) para o contexto das próximas páginas.
     """
     img_pil = mobile_image_io.open_rgb(img_path)  # Pillow ou decodificador nativo do Android
     b64, (sent_h, sent_w) = encode_image_base64(img_pil, config.get("max_image_dim", 1400))
@@ -77,6 +80,9 @@ def process_single_page(img_path, out_path, config, extra_prompt="", originals=N
     if originals is not None:
         originals.extend(str(b.get("original") or "").strip() for b in bubbles
                          if isinstance(b, dict) and str(b.get("original") or "").strip())
+    if pairs is not None:
+        pairs.extend((str(b.get("original") or "").strip(), str(b.get("translation") or "").strip())
+                     for b in bubbles if isinstance(b, dict))
 
     real_w, real_h = img_pil.size
     safe_regions = []
@@ -154,12 +160,15 @@ def translate_manga_folder(input_folder, output_folder=None, progress_cb=None):
         n_pers = len((ficha_ctx.get("ficha") or {}).get("personagens") or [])
         notify(0, f"📒 Ficha da obra carregada ({n_pers} personagem(ns)): nomes e gêneros vão no prompt.")
 
+    state = {"cfg": cfg}  # histórico de falas (contexto) e controle da espera de cota
+
     try:
         for idx, (in_p, out_name) in enumerate(pages):
             out_p = os.path.join(output_folder, out_name)
             notify(idx + 1, f"Traduzindo página {idx + 1}/{total} ({out_name})...")
             try:
-                n = process_single_page(in_p, out_p, cfg, extra_prompt=ficha_prompt, originals=originals)
+                n = _translate_page_waiting_quota(in_p, out_p, cfg, ficha_prompt, originals, state, idx + 1,
+                                                  lambda m, i=idx: notify(i + 1, m))
                 translated += 1
                 if n == 0:
                     notify(idx + 1, f"ℹ️ Página {idx + 1}: nenhum balão de fala detectado.")
@@ -206,6 +215,37 @@ def translate_manga_folder(input_folder, output_folder=None, progress_cb=None):
     if progress_cb:
         progress_cb("done", total, total, summary_message(summary), result=summary)
     return summary
+
+
+QUOTA_HINTS = ("429", "quota", "rate limit", "rate_limit", "resource_exhausted", "too many requests", "limit exceeded")
+
+
+def is_quota_error(err):
+    """Todas as IAs falharam por cota/limite (e não por página recusada ou resposta ruim)."""
+    low = str(err).lower()
+    return any(h in low for h in QUOTA_HINTS)
+
+
+def _translate_page_waiting_quota(in_p, out_p, cfg, ficha_prompt, originals, state, page_num, notify):
+    """Traduz uma página com as falas das páginas anteriores no prompt. Se TODAS as IAs estiverem sem cota,
+    espera a cota renovar e tenta de novo (o botão Parar continua valendo), em vez de deixar a página no original."""
+    attempt = 0
+    while True:
+        ctx = chapter_context.build_block(state, cfg, current_page=page_num)
+        prompt = "\n".join(p for p in (ficha_prompt, ctx) if p)
+        pairs = []
+        try:
+            n = process_single_page(in_p, out_p, cfg, extra_prompt=prompt, originals=originals, pairs=pairs)
+            chapter_context.remember_page(state, page_num, pairs)
+            return n
+        except Exception as e:
+            skip = str(cfg.get("quota_fallback", "wait")).lower() in ("skip", "google")
+            if skip or not (is_quota_error(e) and quota_wait.should_wait(cfg, state)):
+                raise
+            state["_progress_hook"] = notify
+            # 1ª espera curta (pode ser só o limite por minuto); depois, de 10 em 10 minutos
+            quota_wait.wait_for_quota(state, str(e)[:160], interval=60 if attempt == 0 else quota_wait.INTERVAL)
+            attempt += 1
 
 
 def summary_message(summary):
