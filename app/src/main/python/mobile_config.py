@@ -62,6 +62,8 @@ def get_default_config():
         "preserve_lineart": True,
         "auto_cbz": True,
         "auto_reader": True,
+        "quota_fallback": "wait",  # sem cota: esperar e continuar (v1.0.15) em vez de deixar a página no original
+        "context_pages": 2,  # falas das páginas anteriores no prompt
     }
 
 
