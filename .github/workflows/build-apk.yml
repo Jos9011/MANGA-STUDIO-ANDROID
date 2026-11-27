@@ -58,12 +58,12 @@ jobs:
       - name: 📦 Preparar APK Final
         run: |
           mkdir -p build/outputs/apk/
-          cp app/build/outputs/apk/debug/app-debug.apk build/outputs/apk/MangaStudio-Mobile-v1.0.15.apk || true
+          cp app/build/outputs/apk/debug/app-debug.apk build/outputs/apk/MangaStudio-Mobile-v1.0.16.apk || true
 
       - name: 📤 Publicar APK como Artefato para Download
         uses: actions/upload-artifact@v4
         with:
-          name: MangaStudio-Mobile-v1.0.15-APK
+          name: MangaStudio-Mobile-v1.0.16-APK
           path: app/build/outputs/apk/debug/*.apk
           retention-days: 30
 
@@ -71,12 +71,22 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: v1.0.15-mobile
-          name: "Manga Studio Mobile v1.0.15 APK (v0.8.1 Beta — tradução com contexto)"
+          tag_name: v1.0.16-mobile
+          name: "Manga Studio Mobile v1.0.16 APK (v0.8.4 Beta — visual novo e colorização)"
           body: |
-            ## 📱 Manga Studio Mobile v1.0.15 — Sistema Oficial v0.8.1 Beta
+            ## 📱 Manga Studio Mobile v1.0.16 — Sistema Oficial v0.8.4 Beta
 
-            ### 🧠 Tradução com contexto
+            ### 🎨 Visual novo (o mesmo do PC v0.8.4)
+            - Telas Traduzir, Biblioteca, Cotas de IA, Regras e Ajustes redesenhadas, com tema claro e escuro.
+            - Google Drive continua na Biblioteca. A tela Traduzir mostra só o que funciona no celular (a leitura e a tradução são sempre por imagem, na nuvem).
+            - A IA local (Ollama) saiu do app: ela precisa da placa de vídeo de um PC.
+
+            ### 🖌️ Colorização no celular (nova)
+            - "Colorir páginas" ao traduzir, ou "Só colorir" para colorir sem traduzir (vai para a pasta de traduzidos com " [COLORIDO]").
+            - Mesmas técnicas do PC v0.8.4: pele natural com sombra, cores mais contidas, retícula vira sombra lisa e cada roupa fica com uma cor só.
+            - Na primeira vez baixa o modelo (58 MB). Cada página leva cerca de 30 a 90 segundos, conforme o celular.
+
+            ### Inclui a v1.0.15: tradução com contexto
             - Cada página vai para a IA com as últimas falas já traduzidas das páginas anteriores: tom, nomes e gênero de quem fala ficam coerentes.
             - Quando TODAS as IAs ficam sem cota, a página espera a cota renovar e é traduzida depois, em vez de ficar no idioma original. Mantenha o app aberto; Parar e Pausar continuam valendo.
             - Novo cartão **Tradução** em Configurações para escolher quantas páginas de contexto enviar e o que fazer sem cota.

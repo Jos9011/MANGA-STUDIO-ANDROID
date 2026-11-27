@@ -7,7 +7,7 @@
 ## 1. Identificação Geral do Projeto
 
 * **Nome do Sistema:** **Manga Studio (PT-BR)**
-* **Versão Oficial Atual:** **`v0.8.1 Beta` (`0.8.1-beta`)** / APK Android: **`v1.0.15-mobile` (versionCode 16)**
+* **Versão Oficial Atual:** **`v0.8.4 Beta` (`0.8.4-beta`)** / APK Android: **`v1.0.16-mobile` (versionCode 17)**. A versão fica só em `mobile_version.py` (servidor e /api/config) e no `app/build.gradle`.
 * **Autor / Proprietário:** **Jos9011**
 * **Objetivo:** Plataforma completa de scanlation automatizado de alta fidelidade para mangás (japonês), manhwas (coreano), manhuas (chinês) e quadrinhos em inglês/espanhol com destino em **Português do Brasil (PT-BR)**.
 * **Repositórios Oficiais no GitHub:**
@@ -55,6 +55,18 @@ O sistema é dividido em submódulos cooperativos:
 * **Android (v1.0.12):** como a IA Vision lê e traduz cada página numa chamada só, `mobile_ficha.py` anexa a ficha ao prompt da IA Vision, recebe o texto `original` de cada balão e roda o Líder no fim do capítulo, atualizando a ficha para os próximos.
 * `ficha_obra.py`, `ficha_caminho.py` e `lider_capitulo.py` são **cópias idênticas** nos dois repositórios: altere nos dois juntos (teste `TestSharedModulesInSync` compara quando `MANGA_PC_REPO` aponta para o repositório do PC).
 * Ficha em `.fichas_obra/<obra>.json` na pasta que contém os capítulos soltos ("Obra Ch.1", "Obra Ch.2").
+
+### A5. Visual novo e colorização (Android v1.0.16, sistema v0.8.4)
+* **Interface:** `studio/templates` (index + `partials/`), `studio/static/js` e `studio/static/css` são cópias da v0.8.4 do PC, com três mudanças:
+  * sem IA local (Ollama): sem seção em Ajustes, sem opção de motor, sem cartão em Cotas;
+  * tela Traduzir só com "Tradução no celular" e "Cores", porque o APK ignora as opções de OCR, motor e conteúdo;
+  * `static/js/gdrive.js` + seção `#gdrive-section` na Biblioteca, ligada por `loadLibrary`/`filterLibrary`.
+* **Colorização:** o Chaquopy não tem onnxruntime nem OpenCV para Python 3.11 (só numpy 1.26).
+  * `OnnxColorizer.kt` roda o modelo no `onnxruntime-android` 1.20.0, com troca de bytes float32 entre Python e Kotlin.
+  * `mobile_color_merge.py` reescreve o `color_merge.py` do PC em NumPy/Pillow (Lab com as fórmulas 8 bits do OpenCV). Numa página real, a diferença para o PC foi de 1,4 em 255 em média.
+  * `mobile_colorizer.py`: download atômico do modelo para `get_base_dir()/models/colorizer`, lado maior de 768 px no modelo e traço recolocado em tamanho real. Fora do Android, usa o onnxruntime do Python (testes).
+* **Rotas:** `/api/colorize` (só colorir, saída em `<traduzidos>/<obra> [COLORIDO]`) e `/api/start` com `colorize: true` (colore no lugar a pasta traduzida, mantendo o formato de cada arquivo).
+* **Ainda não testado num celular de verdade:** a velocidade, a memória e a ponte Python <-> Kotlin. O CI só compila o Kotlin.
 
 ### A4. Contexto entre páginas e espera de cota (Android v1.0.15)
 * `chapter_context.py` e `quota_wait.py` são cópias idênticas dos módulos do PC (v0.8.1).
@@ -118,5 +130,5 @@ O sistema é dividido em submódulos cooperativos:
   * Abrir o notebook `Colab_Manga_WebUI.ipynb` no Google Colab, selecionar GPU e executar as células.
   * O servidor sobe via Cloudflare Tunnel com token secreto criptográfico: `https://xxxx.trycloudflare.com/?token=SEU_TOKEN`.
 * **No Celular Android:**
-  * Instalar o APK gerado no GitHub Actions (`MANGA-STUDIO-ANDROID/releases/download/v1.0.15-mobile/app-debug.apk`).
+  * Instalar o APK gerado no GitHub Actions (`MANGA-STUDIO-ANDROID/releases/download/v1.0.16-mobile/app-debug.apk`).
   * O app roda um servidor Flask em segundo plano via Chaquopy na porta interna `8080` e abre a WebView nativa.
