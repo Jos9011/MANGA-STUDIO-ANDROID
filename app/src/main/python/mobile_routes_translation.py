@@ -9,11 +9,13 @@ import threading
 import requests
 from flask import Blueprint, jsonify, request
 
+import mobile_colorizer
 import mobile_config
 import mobile_drive_helper
 import mobile_job_control
 import mobile_quota_checker
 import mobile_translator
+import mobile_version
 
 trans_bp = Blueprint("trans_bp", __name__)
 _JOB_CTRL = mobile_job_control.JobController()
@@ -65,58 +67,100 @@ def api_progress():
         return jsonify(dict(_JOB_STATE))
 
 
+def _resolve_target(path):
+    """Pasta do capítulo (ZIP/CBZ é extraído antes) ou None."""
+    if os.path.isfile(path) and path.lower().endswith((".zip", ".cbz")):
+        return mobile_drive_helper.extract_manga_archive(path)
+    return path
+
+
+def _start_job(target_dir, first_img, work, stage, start_msg):
+    """Inicia uma tarefa em segundo plano (tradução ou colorização) com pausar/parar."""
+    manga_name = os.path.basename(target_dir.rstrip("/\\"))
+    with _JOB_LOCK:
+        _JOB_CTRL.reset()
+        _JOB_STATE.update({"status": "running", "manga_name": manga_name, "manga_path": target_dir,
+                           "first_img": first_img, "stage": stage, "current_page": 0, "total_pages": 0,
+                           "percentage": 0, "message": start_msg, "logs": [f"{start_msg}: {manga_name}"],
+                           "result": None, "error": None})
+
+    def worker():
+        try:
+            summary, final_msg = work()
+            set_job_progress(status="done", stage="done", current=1, total=1, msg=final_msg, log=final_msg, result=summary)
+        except mobile_job_control.JobCancelledError:
+            set_job_progress(status="cancelled", stage="cancelled", msg="Tarefa interrompida pelo usuário.", log="Tarefa encerrada com segurança.")
+        except Exception as e:
+            set_job_progress(status="error", stage="error", msg=f"Erro: {str(e)}", log=f"[ERRO] {str(e)}", error=str(e))
+        finally:
+            mobile_colorizer.release()
+
+    threading.Thread(target=worker, daemon=True).start()
+
+
+def _colorize_step(folder, output_dir=None):
+    """Colore as páginas com o progresso na tela; devolve o resumo e a frase final."""
+    def cb(cur, tot, msg):
+        _JOB_CTRL.checkpoint()
+        set_job_progress(status="running", stage="colorize", current=cur, total=tot, msg=msg, log=msg)
+
+    summary = mobile_colorizer.colorize_folder(folder, output_dir=output_dir, progress_cb=cb, checkpoint=_JOB_CTRL.checkpoint)
+    msg = f"Colorização concluída: {summary['colorized']} de {summary['total']} páginas em {summary['seconds']:.0f} s."
+    if summary["errors"]:
+        msg += f" {len(summary['errors'])} página(s) com erro: {summary['errors'][0]}"
+    return summary, msg
+
+
+def _busy():
+    with _JOB_LOCK:
+        return _JOB_STATE["status"] in ("running", "paused")
+
+
 @trans_bp.route("/api/start", methods=["POST"])
 def api_start():
-    with _JOB_LOCK:
-        if _JOB_STATE["status"] in ("running", "paused"):
-            return jsonify({"error": "Já existe uma tradução em andamento ou pausada!"}), 409
-
+    if _busy():
+        return jsonify({"error": "Já existe uma tradução em andamento ou pausada!"}), 409
     data = request.get_json() or {}
     path = data.get("path", "").strip("\"'")
     if not path or not os.path.exists(path):
         return jsonify({"error": "Caminho inválido ou não encontrado."}), 400
+    target_dir = _resolve_target(path)
+    if not target_dir:
+        return jsonify({"error": "Falha ao extrair páginas do arquivo."}), 400
+    if data.get("colorize_only"):
+        return api_colorize()
+    want_color = bool(data.get("colorize"))
 
-    target_dir = path
-    if os.path.isfile(path) and path.lower().endswith((".zip", ".cbz")):
-        target_dir = mobile_drive_helper.extract_manga_archive(path)
-        if not target_dir:
-            return jsonify({"error": "Falha ao extrair páginas do arquivo."}), 400
+    def work():
+        def cb(status, cur, tot, msg, result=None):
+            _JOB_CTRL.checkpoint()
+            eff_st = "running" if status == "translating" else status
+            set_job_progress(status=eff_st, stage="translate", current=cur, total=tot, msg=msg, log=msg, result=result)
 
-    manga_name = os.path.basename(target_dir.rstrip("/\\"))
-    first_img = data.get("first_img", "")
+        summary = mobile_translator.translate_manga_folder(target_dir, progress_cb=cb)
+        final_msg = mobile_translator.summary_message(summary)
+        if want_color and summary.get("output") and os.path.isdir(summary["output"]):
+            color, color_msg = _colorize_step(summary["output"], output_dir=summary["output"])
+            summary["colorize"] = color
+            final_msg = f"{final_msg} {color_msg}"
+        return summary, final_msg
 
-    with _JOB_LOCK:
-        _JOB_CTRL.reset()
-        _JOB_STATE["status"] = "running"
-        _JOB_STATE["manga_name"] = manga_name
-        _JOB_STATE["manga_path"] = target_dir
-        _JOB_STATE["first_img"] = first_img
-        _JOB_STATE["stage"] = "ocr"
-        _JOB_STATE["current_page"] = 0
-        _JOB_STATE["total_pages"] = 0
-        _JOB_STATE["percentage"] = 0
-        _JOB_STATE["message"] = "Iniciando processamento mobile..."
-        _JOB_STATE["logs"] = [f"Iniciando tradução de: {manga_name}"]
-        _JOB_STATE["result"] = None
-        _JOB_STATE["error"] = None
-
-    def worker():
-        try:
-            def cb(status, cur, tot, msg, result=None):
-                _JOB_CTRL.checkpoint()
-                eff_st = "running" if status == "translating" else status
-                set_job_progress(status=eff_st, stage="translate", current=cur, total=tot, msg=msg, log=msg, result=result)
-
-            summary = mobile_translator.translate_manga_folder(target_dir, progress_cb=cb)
-            final_msg = mobile_translator.summary_message(summary)
-            set_job_progress(status="done", stage="done", current=1, total=1, msg=final_msg, log=final_msg, result=summary)
-        except mobile_job_control.JobCancelledError:
-            set_job_progress(status="cancelled", stage="cancelled", msg="Tradução interrompida pelo usuário.", log="⏹️ Tradução encerrada com segurança.")
-        except Exception as e:
-            set_job_progress(status="error", stage="error", msg=f"Erro: {str(e)}", log=f"[ERRO] {str(e)}", error=str(e))
-
-    threading.Thread(target=worker, daemon=True).start()
+    _start_job(target_dir, data.get("first_img", ""), work, "ocr", "Iniciando tradução")
     return jsonify({"success": True, "message": "Tradução iniciada"})
+
+
+@trans_bp.route("/api/colorize", methods=["POST"])
+def api_colorize():
+    """Só colorir: as páginas coloridas vão para a pasta de traduzidos com " [COLORIDO]" no nome."""
+    if _busy():
+        return jsonify({"error": "Já existe uma tarefa em andamento ou pausada!"}), 409
+    data = request.get_json() or {}
+    path = data.get("path", "").strip("\"'")
+    target_dir = _resolve_target(path) if path and os.path.exists(path) else None
+    if not target_dir:
+        return jsonify({"error": "Caminho inválido ou não encontrado."}), 400
+    _start_job(target_dir, data.get("first_img", ""), lambda: _colorize_step(target_dir), "colorize", "Iniciando colorização")
+    return jsonify({"success": True, "message": "Colorização iniciada"})
 
 
 @trans_bp.route("/api/job/pause", methods=["POST"])
@@ -154,15 +198,6 @@ def api_job_stop():
     return jsonify({"success": True, "status": "stopping"})
 
 
-@trans_bp.route("/api/colorize", methods=["POST"])
-def api_colorize():
-    # A colorização ONNX existe apenas na versão PC/Colab; não simula sucesso no celular.
-    return jsonify({
-        "success": False,
-        "error": "Colorização ainda não está disponível na versão Android. Use a versão PC/Colab.",
-    }), 501
-
-
 @trans_bp.route("/api/status")
 def api_status():
     return jsonify(mobile_quota_checker.build_live_status())
@@ -176,12 +211,12 @@ def api_config():
         cfg.update(data)
         cfg["use_local_llm"] = False
         saved = mobile_config.save_config(cfg)
-        cfg["app_version"] = "0.8.1-beta"
-        cfg["app_version_name"] = "v0.8.1 Beta"
+        cfg["app_version"] = mobile_version.APP_VERSION
+        cfg["app_version_name"] = mobile_version.APP_VERSION_NAME
         return jsonify({"success": saved, "config": cfg})
     cfg = mobile_config.load_config()
-    cfg["app_version"] = "0.8.1-beta"
-    cfg["app_version_name"] = "v0.8.1 Beta"
+    cfg["app_version"] = mobile_version.APP_VERSION
+    cfg["app_version_name"] = mobile_version.APP_VERSION_NAME
     return jsonify(cfg)
 
 

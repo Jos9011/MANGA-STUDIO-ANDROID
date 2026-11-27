@@ -27,7 +27,10 @@ Para rodar suavemente em qualquer smartphone moderno sem drenar bateria e sem so
    - Na Biblioteca, "Conectar Google Drive" faz login com a sua conta Google (permissão só de leitura) e lista a pasta `MANGAS` do seu Drive.
    - "⬇️ Baixar" copia a obra (pasta de imagens ou `.zip/.cbz`) para `/sdcard/MANGAS`, pronta para traduzir.
    - Exige a chave fixa do APK e um cliente OAuth Android no Google Cloud (veja `CONTEXTO_PROJETO.md`).
-6. **Leitor Integrado & Exportação em .CBZ:**
+7. **Visual novo e colorização no celular (v1.0.16, sistema v0.8.4):**
+   - Mesmo visual do PC v0.8.4 (Traduzir, Biblioteca, Cotas, Regras e Ajustes), sem a IA local, que exige uma placa de vídeo de PC.
+   - "Colorir páginas" ou "Só colorir": o modelo ONNX (58 MB, baixado no primeiro uso) roda no ONNX Runtime para Android, e as técnicas de cor do PC (pele natural, retícula lisa, uma cor por peça) foram reescritas em NumPy (`mobile_color_merge.py`).
+8. **Leitor Integrado & Exportação em .CBZ:**
    - Cria automaticamente um pacote `.cbz` e um leitor HTML offline na pasta `MANGAS [PT-BR]` para visualização direta no Tachiyomi, Mihon ou pelo próprio aplicativo.
 
 ---

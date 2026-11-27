@@ -8,6 +8,7 @@ import os
 from flask import Flask, jsonify, render_template, send_from_directory
 
 import mobile_security
+import mobile_version
 from mobile_routes_export import export_bp
 from mobile_routes_gdrive import gdrive_bp
 from mobile_routes_library import library_bp
@@ -25,13 +26,13 @@ app = Flask(
 )
 mobile_security.install(app)
 
-APP_VERSION = "0.8.1-beta"
-APP_VERSION_NAME = "v0.8.1 Beta"
+APP_VERSION = mobile_version.APP_VERSION
+APP_VERSION_NAME = mobile_version.APP_VERSION_NAME
 
 
 @app.context_processor
 def inject_version():
-    """Injeta as variáveis oficiais da versão v0.8.1 Beta em todos os templates Jinja."""
+    """Injeta a versão oficial (mobile_version.py) em todos os templates Jinja."""
     return {
         "app_version": APP_VERSION_NAME,
         "app_version_code": APP_VERSION,

@@ -12,8 +12,8 @@ android {
         applicationId "com.mangastudio.mobile"
         minSdk 26
         targetSdk 34
-        versionCode 16
-        versionName "1.0.15-mobile"
+        versionCode 17
+        versionName "1.0.16-mobile"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
@@ -27,6 +27,7 @@ android {
                 install "flask"
                 install "requests"
                 install "pillow"
+                install "numpy"
             }
         }
     }
@@ -76,4 +77,6 @@ dependencies {
     implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
     // Login do Google para ler o Google Drive (AuthorizationClient)
     implementation 'com.google.android.gms:play-services-auth:21.2.0'
+    // Colorização: o Chaquopy não tem onnxruntime para Python; o modelo roda no ONNX Runtime para Android
+    implementation 'com.microsoft.onnxruntime:onnxruntime-android:1.20.0'
 }

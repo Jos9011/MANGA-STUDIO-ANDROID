@@ -243,15 +243,20 @@ class TestRoutes(unittest.TestCase):
 
 class TestTemplate(unittest.TestCase):
     def test_drive_section_only_in_android_app(self):
-        path = os.path.join(os.path.dirname(__file__), "..", "app", "src", "main", "python", "studio", "templates", "index.html")
-        with open(path, encoding="utf-8") as f:
-            html = f.read()
-        self.assertIn('id="gdrive-section" style="display: none;', html)
-        self.assertIn("window.MangaDrive && window.MangaDrive.isAvailable()", html)
-        self.assertIn("window.onDriveAuthResult = function", html)
-        self.assertIn("gdriveItems.filter(it => mangaMatchesSearch(it.name, q))", html)
-        self.assertNotIn("set_token", html)  # o token nunca passa pela página
-
+        # Desde a v1.0.16 a interface fica em templates/partials e static/js (visual da v0.8.4 do PC)
+        studio = os.path.join(os.path.dirname(__file__), "..", "app", "src", "main", "python", "studio")
+        parts = []
+        for rel in ("templates/partials/library.html", "templates/index.html", "static/js/gdrive.js"):
+            with open(os.path.join(studio, rel), encoding="utf-8") as f:
+                parts.append(f.read())
+        html, index, js = parts
+        self.assertIn('<div id="gdrive-section" hidden>', html)
+        self.assertIn("'gdrive'", index)
+        self.assertIn("window.MangaDrive && window.MangaDrive.isAvailable()", js)
+        self.assertIn("window.onDriveAuthResult = function", js)
+        self.assertIn("gdriveItems.filter(it => mangaMatchesSearch(it.name, q))", js)
+        for text in parts:
+            self.assertNotIn("set_token", text)  # o token nunca passa pela página
 
 if __name__ == "__main__":
     unittest.main()
